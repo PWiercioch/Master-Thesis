@@ -6,5 +6,6 @@
 /OD_API
 /Tutorials
 /Application
+/Old
 */*/__pycache__
 */*/*/__pycache__
