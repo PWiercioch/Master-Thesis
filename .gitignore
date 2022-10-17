@@ -1,0 +1,10 @@
+/.idea
+/Tutorials/logs
+/Tutorials/Carvana_challenge/*/*
+/~
+/Tutorials/~
+/OD_API
+/Tutorials
+/Application
+*/*/__pycache__
+*/*/*/__pycache__
