@@ -16,7 +16,7 @@ class ObjectDetector:
         ----------
             model : loaded tensorflow Object Detection API model
     """
-    def __init__(self, detection_model) -> None:
+    def __init__(self, detection_model: tf.python.saved_model) -> None:
         self.model = detection_model
 
     def __preprocess_image(self, img: np.ndarray[Union[int, float], Union[int, float], Union[int, float]]) \

@@ -17,7 +17,7 @@ class DeepSort:
             encoder : used for extracting features for tracking algo
             tracker : tracking algo
     """
-    def __init__(self, max_cosine_distance=0.5, max_age=5):
+    def __init__(self, max_cosine_distance: float = 0.5, max_age: int = 5) -> None:
         max_cosine_distance = max_cosine_distance
         nn_budget = None
 
