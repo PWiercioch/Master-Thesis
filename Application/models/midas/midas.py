@@ -1,13 +1,33 @@
+import numpy as np
 import tensorflow as tf
 import cv2
+from typing import Union
 
 
 class MiDas:
-    def __init__(self, module):
-        self.model = module
+    """
+    This is a handler class for depth estimation model
 
+        Parameters
+        ----------
+            model : loaded tensorflow hub depth estimation model
 
-    def preprocess(self, img):
+        Attributes
+        ----------
+            model : loaded tensorflow hub depth estimation model
+    """
+    def __init__(self, model: tf.python.trackable.autotrackable.AutoTrackable) -> None:
+        self.model = model
+
+    def __preprocess(self, img: np.ndarray[Union[int, float], Union[int, float], Union[int, float]]) \
+            -> tf.python.framework.ops.EagerTensor:
+        """
+        Prepares image for processing by resizing and creating a tensor
+
+            :param img: image for depth estimation
+
+            :return: tensor ready to be processed by depth estimation model
+        """
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) / 255.0
 
         img_resized = tf.image.resize(img, [256,256], method='bicubic', preserve_aspect_ratio=False)
@@ -18,7 +38,16 @@ class MiDas:
 
         return tensor
 
-    def post_process(self, output, img):
+    def __post_process(self, output: dict, img: np.ndarray[Union[int, float], Union[int, float], Union[int, float]])\
+            -> np.ndarray[np.uint8, np.uint8]:
+        """
+        Process depth estimation output to get depth image
+
+            :param output: output from depth estimation model
+            :param img: image for depth estimation
+
+            :return: Depth image
+        """
         prediction = output['default'].numpy()
         prediction = prediction.reshape(256, 256)
         prediction = cv2.resize(prediction, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_CUBIC)
@@ -29,9 +58,17 @@ class MiDas:
         return img_out
 
 
-    def predict(self, img):
-        tensor = self.preprocess(img)
+    def predict(self, img: np.ndarray[Union[int, float], Union[int, float], Union[int, float]]) \
+            -> np.ndarray[np.uint8, np.uint8]:
+        """
+        Estiamte depth in an image
+
+            :param img: image for depth estimation
+
+            :return: estimation image depth
+        """
+        tensor = self.__preprocess(img)
         output = self.model.signatures['serving_default'](tensor)
-        result = self.post_process(output, img)
+        result = self.__post_process(output, img)
 
         return result
