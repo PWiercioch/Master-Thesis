@@ -2,7 +2,6 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.python as tf_python
 import cv2
-from typing import Union
 
 
 class MiDas:
