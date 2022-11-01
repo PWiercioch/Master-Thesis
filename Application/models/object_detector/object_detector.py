@@ -1,7 +1,7 @@
 import cv2
 import tensorflow as tf
 import numpy as np
-from typing import Union
+import tensorflow.python as tf_python
 
 
 class ObjectDetector:
@@ -16,12 +16,10 @@ class ObjectDetector:
         ----------
             model : loaded tensorflow Object Detection API model
     """
-    def __init__(self, detection_model: tf.python.saved_model) -> None:
+    def __init__(self, detection_model: tf_python.saved_model) -> None:
         self.model = detection_model
 
-    def __preprocess_image(self, img: np.ndarray[Union[int, float], Union[int, float], Union[int, float]]) \
-            -> tuple[np.ndarray[Union[int, float], Union[int, float], Union[int, float]],
-                     tf.python.framework.ops.EagerTensor]:
+    def __preprocess_image(self, img: np.ndarray) -> tuple[np.ndarray, tf_python.framework.ops.EagerTensor]:
         """
         Prepares image for processing by creating a tensor
 
@@ -36,8 +34,7 @@ class ObjectDetector:
         # The model expects a batch of images, so add an axis with `tf.newaxis`.
         return img, input_tensor[tf.newaxis, ...]
 
-    def predict(self, img: np.ndarray[Union[int, float], Union[int, float], Union[int, float]]) \
-            -> tuple[np.ndarray[Union[int, float], Union[int, float], Union[int, float]], dict]:
+    def predict(self, img: np.ndarray) -> tuple[np.ndarray, dict]:
         """
         Detect objects in an  image
 

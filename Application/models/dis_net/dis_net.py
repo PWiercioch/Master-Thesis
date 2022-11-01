@@ -33,7 +33,7 @@ class DisNet:
         return inv_width, inv_height, inv_diagonal
 
     def __load_dist_input(self, predict_box: list[float, float, float, float], predict_class: int,
-                        img_width: int, img_height: int) -> np.ndarray[float, float, float, int, int, int]:
+                        img_width: int, img_height: int) -> np.ndarray:
         """
         Prepares input for distance estimation model from detection bounding box and class
 

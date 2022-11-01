@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow.python as tf_python
 import cv2
 from typing import Union
 
@@ -16,11 +17,10 @@ class MiDas:
         ----------
             model : loaded tensorflow hub depth estimation model
     """
-    def __init__(self, model: tf.python.trackable.autotrackable.AutoTrackable) -> None:
+    def __init__(self, model: tf_python.trackable.autotrackable.AutoTrackable) -> None:
         self.model = model
 
-    def __preprocess(self, img: np.ndarray[Union[int, float], Union[int, float], Union[int, float]]) \
-            -> tf.python.framework.ops.EagerTensor:
+    def __preprocess(self, img: np.ndarray) -> tf_python.framework.ops.EagerTensor:
         """
         Prepares image for processing by resizing and creating a tensor
 
@@ -38,8 +38,7 @@ class MiDas:
 
         return tensor
 
-    def __post_process(self, output: dict, img: np.ndarray[Union[int, float], Union[int, float], Union[int, float]])\
-            -> np.ndarray[np.uint8, np.uint8]:
+    def __post_process(self, output: dict, img: np.ndarray) -> np.ndarray:
         """
         Process depth estimation output to get depth image
 
@@ -58,8 +57,7 @@ class MiDas:
         return img_out
 
 
-    def predict(self, img: np.ndarray[Union[int, float], Union[int, float], Union[int, float]]) \
-            -> np.ndarray[np.uint8, np.uint8]:
+    def predict(self, img: np.ndarray) -> np.ndarray:
         """
         Estiamte depth in an image
 

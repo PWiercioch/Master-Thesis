@@ -4,7 +4,7 @@ import tensorflow_hub as hub
 
 class ModelLoader:
     """
-    Wrapper for loading models from disk
+    Wrapper for loading models from disk. Allows to modify rest of the codebase without reloading models in notebook mode.
 
         Parameters
         ---------
@@ -19,6 +19,15 @@ class ModelLoader:
             depth_model : depth estimation model instance
     """
     def __init__(self, od_model_path: str, dis_model_path: str, midas_path: str) -> None:
-        self.detection_model = tf.saved_model.load(od_model_path)
-        self.distance_model = tf.keras.models.load_model(dis_model_path)
-        self.depth_model = hub.load(midas_path, tags=['serve'])
+        self.load_detection_model(od_model_path)
+        self.load_distance_model(dis_model_path)
+        self.load_depth_model(midas_path)
+
+    def load_detection_model(self, path: str) -> None:
+        self.detection_model = tf.saved_model.load(path)
+
+    def load_distance_model(self, path: str) -> None:
+        self.distance_model = tf.keras.models.load_model(path)
+
+    def load_depth_model(self, path: str) -> None:
+        self.depth_model = hub.load(path, tags=['serve'])
