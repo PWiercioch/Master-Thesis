@@ -6,6 +6,8 @@
 /OD_API
 /Tutorials
 /Application
-/Old
 */*/__pycache__
 */*/*/__pycache__
+
+/Old
+/model_training/OD/data/raw_datasets
