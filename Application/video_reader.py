@@ -69,8 +69,7 @@ class VideoReader:
         if cv2.waitKey(1) == ord('q'):
             return True
 
-    # TODO - handle bounding boxes indices
-    # TODO - fix text annotation
+
     def annonate_image(self, boxes: np.ndarray, classes: np.ndarray) -> None:
         """
         Method for annotating images with bounding boxes
@@ -84,15 +83,18 @@ class VideoReader:
         for i, box in enumerate(boxes):
             class_detected = classes[i]
 
+            # Remember to adjust this
+            box = (box[1], box[0], box[3], box[2])
+
             color = tuple([0, 0, 255])
 
-            draw.rectangle((box[1], box[0], box[3], box[2]), outline=color, width=10)
+            draw.rectangle(box, outline=color, width=2)
 
             text = str(class_detected)
 
-            font = PIL.ImageFont.truetype("arial.ttf", 30)
+            font = PIL.ImageFont.truetype("arial.ttf", 10)
             text_w, text_h = draw.textsize(text, font)
-            # draw.rectangle((box[1], box[0], box[3] + text_w, box[2] + text_h), fill=color, outline=color)
-            # draw.text((box[0], box[1]), text, fill=(0, 0, 0), font=font)
+            draw.rectangle((box[0], box[1], box[0] + text_w, box[1] + text_h), fill=color, outline=color)
+            draw.text((box[0], box[1]), text, fill=(0, 0, 0), font=font)
         
         self.annonated_frame = np.array(annonated_frame)
