@@ -24,6 +24,11 @@ class SystemHandler:
         disnet : distance estimation model instance
         midas : depth estimation model instance
         tracker : object tracker instance
+
+        use_midas : estimate depth on an image or not
+        use_disnet : estimate distance of objects or not
+        use_deepsort : track objects ot not
+
         od_threshold : object detection probability threshold
 
     """
@@ -34,7 +39,11 @@ class SystemHandler:
         self.midas = MiDas(model_loader.depth_model)
         self.tracker = DeepSort()
 
-        self.od_threshold = 0.6  # maybe provide a parameter
+        self.use_midas = True  # maybe provide a parameter or getter/setter
+        self.use_disnet = True  # maybe provide a parameter or getter/setter
+        self.use_deepsort = True  # maybe provide a parameter or getter/setter
+
+        self.od_threshold = 0.6  # maybe provide a parameter or getter/setter
 
     def __get_detections(self, frame: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -86,7 +95,7 @@ class SystemHandler:
             :return: depth frame
         """
         frame = self.midas.predict(frame)
-        frame = cv2.cvtColor(frame,cv2.COLOR_GRAY2RGB)
+        frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
         return frame
 
     def process_video(self, path: str, disp_res: tuple[int, int]) -> None:
@@ -110,11 +119,19 @@ class SystemHandler:
                     if ret:  # break if no valid frame is retrieved
                         break
 
-                    depth_frame = self.__get_depth(frame)
-                    reader.set_frame(depth_frame)
-
                     boxes, classes = self.__get_detections(frame)
-                    distances = self.__get_distances(boxes, classes)
+
+                    if self.use_midas:
+                        depth_frame = self.__get_depth(frame)
+                        reader.set_frame(depth_frame)
+
+                    if self.use_disnet:
+                        distances = self.__get_distances(boxes, classes)
+                    else:
+                        distances = np.array([None] * len(boxes))
+
+                    if self.use_deepsort:
+                        pass
 
                     reader.annonate_image(boxes, classes, distances)
 
