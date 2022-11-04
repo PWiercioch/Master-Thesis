@@ -4,6 +4,7 @@ import cv2
 import PIL.ImageDraw
 import PIL.ImageFont
 import numpy as np
+import random
 
 
 class VideoReader:
@@ -27,6 +28,8 @@ class VideoReader:
         self.filename = path
         self.od_resolution = od_resolution
         self.display_resolution = display_resolution
+
+        self.colors = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in range(50)]
 
         self.class_names = {
             1: "person",
@@ -84,14 +87,15 @@ class VideoReader:
         if cv2.waitKey(1) == ord('q'):
             return True
 
-
-    def annonate_image(self, boxes: np.ndarray, classes: np.ndarray, distances: np.ndarray) -> None:
+    # TODO - add scaling in annotation
+    def annonate_image(self, boxes: np.ndarray, classes: np.ndarray, distances: np.ndarray, ids: np.ndarray) -> None:
         """
         Method for annotating images with bounding boxes
 
         :param boxes: bounding boxes indices from object detection model
         :param classes: classes ids from object detection model
         :param distances: estimated distances to objects
+        :param ids: list of tracked object ids
         """
         annonated_frame = PIL.Image.fromarray(cv2.resize(self.frame, self.od_resolution))
         draw = PIL.ImageDraw.Draw(annonated_frame)
@@ -102,7 +106,7 @@ class VideoReader:
             # maybe move to system handler
             box = (box[1], box[0], box[3], box[2])
 
-            color = tuple((0, 0, 122))
+            color = self.colors[ids[i] % len(self.colors)]
 
             draw.rectangle(box, outline=color, width=2)
 
