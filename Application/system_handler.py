@@ -54,6 +54,27 @@ class SystemHandler:
 
         return boxes, classes
 
+    def __get_distances(self, boxes: np.ndarray, classes: np.ndarray) -> np.ndarray:
+        """
+        Method for estimating distances to detected objects, if class has reference size defined in self.disnet object
+
+            :param boxes: detected objects bounding boxes
+            :param classes: detected objects classes
+
+            :return: detected objects estimated classes
+        """
+        distances = []
+        for i, box in enumerate(boxes):
+            class_detected = int(classes[i])
+            if class_detected in self.disnet.class_sizes.keys():
+                distance = self.disnet.predict([box[1], box[0], box[3], box[2]], class_detected)
+                distance = distance[0][0]
+                distances.append(distance)
+            else:
+                distances.append(None)
+
+        return np.array(distances)
+
     def process_video(self, path: str, disp_res: tuple[int, int]) -> None:
         """
         Main loop for processing input video: detects objects, annotates frames and displays them
@@ -76,6 +97,8 @@ class SystemHandler:
                         break
 
                     boxes, classes = self.__get_detections(frame)
+                    distances = self.__get_distances(boxes, classes)
+
                     reader.annonate_image(boxes, classes)
 
                     if reader.show_frame():  # break on user interrupt

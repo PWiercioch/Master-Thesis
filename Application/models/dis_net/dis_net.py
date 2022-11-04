@@ -51,7 +51,7 @@ class DisNet:
         width = float(right - left) / img_width
         height = float(bottom - top) / img_height
         diagonal = np.sqrt(np.square(width) + np.square(height))
-        class_h, class_w, class_d = np.array(self.class_sizes[predict_class], dtype=np.float32)
+        class_h, class_w, class_d = np.array(self.class_sizes[predict_class]['size'], dtype=np.float32)
         dist_input = [*self.__invert_dimensions(width, height, diagonal), class_h, class_w, class_d]
         return np.array(dist_input)
 
