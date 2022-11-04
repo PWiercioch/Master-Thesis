@@ -56,12 +56,13 @@ class SystemHandler:
 
     def __get_distances(self, boxes: np.ndarray, classes: np.ndarray) -> np.ndarray:
         """
-        Method for estimating distances to detected objects, if class has reference size defined in self.disnet object
+        Method for estimating distances to detected objects, if class has reference size defined in self.disnet
 
             :param boxes: detected objects bounding boxes
             :param classes: detected objects classes
 
-            :return: detected objects estimated classes
+            :return: detected objects estimated distance,
+                none if class doesn't have reference size defined in self.disnet
         """
         distances = []
         for i, box in enumerate(boxes):
@@ -99,7 +100,7 @@ class SystemHandler:
                     boxes, classes = self.__get_detections(frame)
                     distances = self.__get_distances(boxes, classes)
 
-                    reader.annonate_image(boxes, classes)
+                    reader.annonate_image(boxes, classes, distances)
 
                     if reader.show_frame():  # break on user interrupt
                         break
