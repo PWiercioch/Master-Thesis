@@ -63,6 +63,9 @@ class VideoReader:
 
         return False, cv2.resize(self.frame, self.od_resolution)
 
+    def set_frame(self, frame: np.ndarray) -> None:
+        self.frame = frame
+
     def show_frame(self, annotated: bool = True) -> Union[bool, None]:
         """
         Method for displaying frame
@@ -99,7 +102,7 @@ class VideoReader:
             # Remember to adjust this
             box = (box[1], box[0], box[3], box[2])
 
-            color = tuple([0, 0, 255])
+            color = tuple((0, 0, 122))
 
             draw.rectangle(box, outline=color, width=2)
 
