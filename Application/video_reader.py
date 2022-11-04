@@ -21,11 +21,23 @@ class VideoReader:
         filename : path to video file
         od_resolution : resolution required for object detection model
         display_resolution : resolution for displayed video
+        class_names : mapping be
     """
     def __init__(self, path: str, od_resolution: tuple[int, int], display_resolution: tuple[int, int]) -> None:
         self.filename = path
         self.od_resolution = od_resolution
         self.display_resolution = display_resolution
+
+        self.class_names = {
+            1: "person",
+            2: "big_car",
+            3: "car",
+            4: "bike",
+            5: "train",
+            6: "traffic_light",
+            7: "animal",
+            8: "obstacle"
+        }
 
     def __enter__(self) -> VideoReader:
         self.cap = cv2.VideoCapture(self.filename)
@@ -73,12 +85,13 @@ class VideoReader:
             return True
 
 
-    def annonate_image(self, boxes: np.ndarray, classes: np.ndarray) -> None:
+    def annonate_image(self, boxes: np.ndarray, classes: np.ndarray, distances: np.ndarray) -> None:
         """
         Method for annotating images with bounding boxes
 
         :param boxes: bounding boxes indices from object detection model
         :param classes: classes ids from object detection model
+        :param distances: estimated distances to objects
         """
         annonated_frame = PIL.Image.fromarray(cv2.resize(self.frame, self.od_resolution))
         draw = PIL.ImageDraw.Draw(annonated_frame)
@@ -93,9 +106,13 @@ class VideoReader:
 
             draw.rectangle(box, outline=color, width=2)
 
-            text = str(class_detected)
+            distance = distances[i]
+            if distance:
+                text = f"{self.class_names[class_detected]} at {distance:.2f} m"
+            else:
+                text = self.class_names[class_detected]
 
-            font = PIL.ImageFont.truetype("arial.ttf", 10)
+            font = PIL.ImageFont.truetype("arial.ttf", 8)
             text_w, text_h = draw.textsize(text, font)
             draw.rectangle((box[0], box[1], box[0] + text_w, box[1] + text_h), fill=color, outline=color)
             draw.text((box[0], box[1]), text, fill=(0, 0, 0), font=font)

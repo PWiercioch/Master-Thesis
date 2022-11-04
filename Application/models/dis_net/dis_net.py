@@ -18,8 +18,11 @@ class DisNet:
     """
     def __init__(self, distance_model: keras.engine.sequential.Sequential) -> None:
         self.model = distance_model
-        self.class_sizes = {1:[175, 55, 30], 2: [110, 50, 180], 
-            3: [160, 180, 400], 18: [50, 30, 60]}
+        self.class_sizes = {1: {"name": "person", "size": [175, 55, 30]},
+                            2: {"name": "car", "size": [160, 180, 400]},
+                            3: {"name": "big_car", "size": [350, 300, 1350]},
+                            4: {"name": "bike", "size": [110, 50, 180]},
+                            7: {"name": "animal", "size": [45, 25, 55]}}
         self.zoom_in_factor = 1
 
     def __invert_dimensions(self, width: float, height: float, diagonal: float) -> tuple[float, float, float]:
@@ -48,7 +51,7 @@ class DisNet:
         width = float(right - left) / img_width
         height = float(bottom - top) / img_height
         diagonal = np.sqrt(np.square(width) + np.square(height))
-        class_h, class_w, class_d = np.array(self.class_sizes[predict_class], dtype=np.float32)
+        class_h, class_w, class_d = np.array(self.class_sizes[predict_class]['size'], dtype=np.float32)
         dist_input = [*self.__invert_dimensions(width, height, diagonal), class_h, class_w, class_d]
         return np.array(dist_input)
 
