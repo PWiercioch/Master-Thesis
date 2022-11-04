@@ -59,7 +59,7 @@ class VideoReader:
         ret, self.frame = self.cap.read()
 
         if not ret:
-            return True, 0
+            return True, np.array([])
 
         return False, cv2.resize(self.frame, self.od_resolution)
 
@@ -99,7 +99,7 @@ class VideoReader:
         for i, box in enumerate(boxes):
             class_detected = classes[i]
 
-            # Remember to adjust this
+            # maybe move to system handler
             box = (box[1], box[0], box[3], box[2])
 
             color = tuple((0, 0, 122))
