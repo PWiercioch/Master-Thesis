@@ -6,6 +6,7 @@ from models.model_loader import ModelLoader
 from video_reader import VideoReader
 import tensorflow as tf
 import numpy as np
+import cv2
 
 
 class SystemHandler:
@@ -54,6 +55,18 @@ class SystemHandler:
 
         return boxes, classes
 
+    def __get_depth(self, frame: np.ndarray) -> np.ndarray:
+        """
+        Method for estimating depth of a frame
+
+            :param frame: frame for depth estimation
+
+            :return: depth frame
+        """
+        frame = self.midas.predict(frame)
+        frame = cv2.cvtColor(frame,cv2.COLOR_GRAY2RGB)
+        return frame
+
     def process_video(self, path: str, disp_res: tuple[int, int]) -> None:
         """
         Main loop for processing input video: detects objects, annotates frames and displays them
@@ -74,6 +87,9 @@ class SystemHandler:
 
                     if ret:  # break if no valid frame is retrieved
                         break
+
+                    depth_frame = self.__get_depth(frame)
+                    reader.set_frame(depth_frame)
 
                     boxes, classes = self.__get_detections(frame)
                     reader.annonate_image(boxes, classes)
