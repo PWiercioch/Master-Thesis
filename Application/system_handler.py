@@ -16,6 +16,8 @@ class SystemHandler:
         Parameters
         ----------
         model_loader : Object with models loaded from disk
+        max_cosine_distance : maximal cosine distance for object association
+        max_age : number of frames after track will be deleted
 
         Attributes
         ----------
@@ -32,12 +34,12 @@ class SystemHandler:
         od_threshold : object detection probability threshold
 
     """
-    def __init__(self, model_loader: ModelLoader) -> None:
+    def __init__(self, model_loader: ModelLoader, max_cosine_distance: float = 0.5, max_age: int = 5) -> None:
         self.detector = ObjectDetector(model_loader.detection_model)
         self.od_resolution = model_loader.od_resolution
         self.disnet = DisNet(model_loader.distance_model)
         self.midas = MiDas(model_loader.depth_model)
-        self.tracker = DeepSort()
+        self.tracker = DeepSort(max_cosine_distance, max_age)
 
         self.use_midas = True  # maybe provide a parameter or getter/setter
         self.use_disnet = True  # maybe provide a parameter or getter/setter
@@ -45,24 +47,25 @@ class SystemHandler:
 
         self.od_threshold = 0.6  # maybe provide a parameter or getter/setter
 
-    def __get_detections(self, frame: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def __get_detections(self, frame: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Method for getting bounding boxes and object classes from frame, when detection probability is high enough
 
             :param frame: video frame for object detection
 
-            :return: detected objects bounding boxes and classes
+            :return: detected objects bounding boxes, classes and scores
         """
         img_detetect, detections = self.detector.predict(frame)
 
         ind = detections['detection_scores'] > self.od_threshold
+        scores = detections['detection_scores'][ind].numpy()
         boxes = detections['detection_boxes'][ind].numpy()
         classes = detections['detection_classes'][ind].numpy()
 
         boxes = boxes * self.od_resolution[0]
         boxes = boxes.astype(int)
 
-        return boxes, classes
+        return boxes, classes, scores
 
     def __get_distances(self, boxes: np.ndarray, classes: np.ndarray) -> np.ndarray:
         """
@@ -119,7 +122,12 @@ class SystemHandler:
                     if ret:  # break if no valid frame is retrieved
                         break
 
-                    boxes, classes = self.__get_detections(frame)
+                    boxes, classes, scores = self.__get_detections(frame)
+
+                    if self.use_deepsort:
+                        ids, boxes, classes = self.tracker.predict(frame, boxes, classes, scores)
+                    else:
+                        ids = np.array([None] * len(boxes))
 
                     if self.use_midas:
                         depth_frame = self.__get_depth(frame)
@@ -129,9 +137,6 @@ class SystemHandler:
                         distances = self.__get_distances(boxes, classes)
                     else:
                         distances = np.array([None] * len(boxes))
-
-                    if self.use_deepsort:
-                        pass
 
                     reader.annonate_image(boxes, classes, distances)
 
