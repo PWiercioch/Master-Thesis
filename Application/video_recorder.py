@@ -9,7 +9,7 @@ class VideoRecorder:
 
     def __init__(self, filename, resolution):
         self.filename = filename
-        self.resolution = resolution
+        self.resolution = (resolution, resolution)
         self.out = None
 
     def __enter__(self) -> VideoRecorder:

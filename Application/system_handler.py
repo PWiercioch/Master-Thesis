@@ -22,7 +22,7 @@ class SystemHandler:
         Attributes
         ----------
         detector : object detection model instance
-        od_resolution : resolution required for object detection model
+        od_resolution : resolution required for object detection model, assumed to be square
         disnet : distance estimation model instance
         midas : depth estimation model instance
         tracker : object tracker instance
@@ -62,7 +62,7 @@ class SystemHandler:
         boxes = detections['detection_boxes'][ind].numpy()
         classes = detections['detection_classes'][ind].numpy()
 
-        boxes = boxes * self.od_resolution[0]
+        boxes = boxes * self.od_resolution
         boxes = boxes.astype(int)
 
         return boxes, classes, scores
@@ -113,13 +113,13 @@ class SystemHandler:
 
         return frame.astype(np.uint8)
 
-    def process_video(self, path: str, out_path: str, disp_res: tuple[int, int]) -> None:
+    def process_video(self, path: str, out_path: str, disp_res: int) -> None:
         """
         Main loop for processing input video: detects objects, annotates frames and displays them
 
         :param path: path to video file
         :param out_path: path for output video file
-        :param disp_res: resolution for displayed video
+        :param disp_res: resolution for displayed video, assumed to be square
         """
         reader = VideoReader(path, self.od_resolution, disp_res)
         writer = VideoRecorder(out_path, disp_res)

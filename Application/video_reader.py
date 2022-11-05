@@ -21,16 +21,16 @@ class VideoReader:
         Attributes
         ----------
         filename : path to video file
-        od_resolution : resolution required for object detection model
-        display_resolution : resolution for displayed video
+        od_resolution : resolution required for object detection model, assumed to be square
+        display_resolution : resolution for displayed video, assumed to be square
         class_names : mapping be
         frame : read video frame
         frame_t : time of read frame
     """
-    def __init__(self, path: str, od_resolution: tuple[int, int], display_resolution: tuple[int, int]) -> None:
+    def __init__(self, path: str, od_resolution: int, display_resolution: int) -> None:
         self.filename = path
-        self.od_resolution = od_resolution
-        self.display_resolution = display_resolution
+        self.od_resolution = (od_resolution, od_resolution)
+        self.display_resolution = (display_resolution, display_resolution)
 
         self.colors = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in range(50)]
 
