@@ -32,7 +32,7 @@ class VideoReader:
         self.filename = path
         self.od_resolution = (od_resolution, od_resolution)
         self.display_resolution = (display_resolution, display_resolution)
-        self.scale = int(display_resolution / od_resolution)
+        self.scale = display_resolution / od_resolution
 
         self.colors = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in range(50)]
 
@@ -113,8 +113,12 @@ class VideoReader:
         annonated_frame = PIL.Image.fromarray(cv2.resize(self.frame, self.display_resolution))
         draw = PIL.ImageDraw.Draw(annonated_frame)
 
+        font = PIL.ImageFont.truetype("arial.ttf", int(8 * self.scale))
+
+        boxes = boxes * self.scale
+        boxes = boxes.astype(int)
+
         for i, box in enumerate(boxes):
-            box = box * self.scale
             class_detected = classes[i]
 
             # maybe move to system handler
@@ -130,7 +134,6 @@ class VideoReader:
             else:
                 text = self.class_names[class_detected]
 
-            font = PIL.ImageFont.truetype("arial.ttf", int(8 * self.scale))
             text_w, text_h = draw.textsize(text, font)
             draw.rectangle((box[0], box[1], box[0] + text_w, box[1] + text_h), fill=color, outline=color)
             draw.text((box[0], box[1]), text, fill=(0, 0, 0), font=font)
