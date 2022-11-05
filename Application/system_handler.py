@@ -7,6 +7,7 @@ from video_reader import VideoReader
 import tensorflow as tf
 import numpy as np
 import cv2
+import PIL.Image
 
 
 class SystemHandler:
@@ -95,11 +96,23 @@ class SystemHandler:
 
             :param frame: frame for depth estimation
 
-            :return: depth frame
+            :return: frame alpha blended with black background basing on depth value for each pixel
         """
-        frame = self.midas.predict(frame)
-        frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
-        return frame
+        midas_frame = self.midas.predict(frame)
+
+        a = (midas_frame - midas_frame.min())/(midas_frame.max() - midas_frame.min())
+        blank = np.ones((320, 320, 3), np.uint8) * 255
+        alpha = np.zeros((320, 320, 3), np.float64)
+
+        alpha[::, ::, 0] = a
+        alpha[::, ::, 1] = a
+        alpha[::, ::, 2] = a
+
+        frame = alpha * frame
+        blank = (1.0 - alpha) * blank
+        frame = frame + blank
+
+        return frame.astype(np.uint8)
 
     def process_video(self, path: str, disp_res: tuple[int, int]) -> None:
         """
@@ -127,7 +140,7 @@ class SystemHandler:
                     if self.use_deepsort:
                         ids, boxes, classes = self.tracker.predict(frame, boxes, classes, scores)
                     else:
-                        ids = np.array([None] * len(boxes))
+                        ids = np.array([0] * len(boxes))
 
                     if self.use_midas:
                         depth_frame = self.__get_depth(frame)
@@ -138,7 +151,7 @@ class SystemHandler:
                     else:
                         distances = np.array([None] * len(boxes))
 
-                    reader.annonate_image(boxes, classes, distances)
+                    reader.annonate_image(boxes, classes, distances, ids)
 
                     if reader.show_frame():  # break on user interrupt
                         break
