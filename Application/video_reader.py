@@ -25,7 +25,7 @@ class VideoReader:
         display_resolution : resolution for displayed video
         class_names : mapping be
         frame : read video frame
-        time : time of read frame
+        frame_t : time of read frame
     """
     def __init__(self, path: str, od_resolution: tuple[int, int], display_resolution: tuple[int, int]) -> None:
         self.filename = path
@@ -35,7 +35,7 @@ class VideoReader:
         self.colors = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in range(50)]
 
         self.frame = None
-        self.time = None
+        self.frame_t = None
 
         self.class_names = {
             1: "person",
@@ -50,7 +50,7 @@ class VideoReader:
 
     def __enter__(self) -> VideoReader:
         self.cap = cv2.VideoCapture(self.filename)
-        if self.cap.isOpened() == False:
+        if not self.cap.isOpened():
             return False
         return self
 
@@ -58,7 +58,7 @@ class VideoReader:
         self.cap.release()
         cv2.destroyAllWindows()
 
-    def get_frame(self) -> tuple[bool, np.ndarray]:
+    def read_frame(self) -> tuple[bool, np.ndarray]:
         """
         Method for retrieving frame from video file
 
@@ -76,6 +76,9 @@ class VideoReader:
 
     def set_frame(self, frame: np.ndarray) -> None:
         self.frame = frame
+
+    def get_frame(self) -> np.ndarray:
+        return self.annonated_frame
 
     def show_frame(self, annotated: bool = True) -> Union[bool, None]:
         """

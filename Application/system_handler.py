@@ -6,8 +6,7 @@ from models.model_loader import ModelLoader
 from video_reader import VideoReader
 import tensorflow as tf
 import numpy as np
-import cv2
-import PIL.Image
+from video_recorder import VideoRecorder
 
 
 class SystemHandler:
@@ -114,23 +113,25 @@ class SystemHandler:
 
         return frame.astype(np.uint8)
 
-    def process_video(self, path: str, disp_res: tuple[int, int]) -> None:
+    def process_video(self, path: str, out_path: str, disp_res: tuple[int, int]) -> None:
         """
         Main loop for processing input video: detects objects, annotates frames and displays them
 
         :param path: path to video file
+        :param out_path: path for output video file
         :param disp_res: resolution for displayed video
         """
         reader = VideoReader(path, self.od_resolution, disp_res)
+        writer = VideoRecorder(out_path, disp_res)
 
-        with reader as video:
+        with reader as video, writer as out:
             if not video:  # break if error while opening file
                 return None
 
             with tf.device("/device:GPU:0"):
 
                 while True:
-                    ret, frame = video.get_frame()
+                    ret, frame = video.read_frame()
 
                     if ret:  # break if no valid frame is retrieved
                         break
@@ -152,6 +153,8 @@ class SystemHandler:
                         distances = np.array([None] * len(boxes))
 
                     reader.annonate_image(boxes, classes, distances, ids)
+
+                    out.write(video.get_frame())
 
                     if reader.show_frame():  # break on user interrupt
                         break
