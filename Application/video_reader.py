@@ -27,6 +27,7 @@ class VideoReader:
         class_names : mapping be
         frame : read video frame
         frame_t : time of read frame
+        cap : input video reader object
     """
     def __init__(self, path: str, od_resolution: int, display_resolution: int) -> None:
         self.filename = path
