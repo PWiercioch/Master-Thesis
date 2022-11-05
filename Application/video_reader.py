@@ -14,20 +14,20 @@ class VideoReader:
 
         Parameters
         ----------
-        path : path to video file
-        od_resolution : resolution required for object detection model
-        display_resolution : resolution for displayed video
+            path : path to video file
+            od_resolution : resolution required for object detection model
+            display_resolution : resolution for displayed video
 
         Attributes
         ----------
-        filename : path to video file
-        od_resolution : resolution required for object detection model, assumed to be square
-        display_resolution : resolution for displayed video, assumed to be square
-        scale : ratio between object detector required resolution and display resolution
-        class_names : mapping be
-        frame : read video frame
-        frame_t : time of read frame
-        cap : input video reader object
+            filename : path to video file
+            od_resolution : resolution required for object detection model, assumed to be square
+            display_resolution : resolution for displayed video, assumed to be square
+            scale : ratio between object detector required resolution and display resolution
+            class_names : mapping be
+            frame : read video frame
+            frame_t : time of read frame
+            cap : input video reader object
     """
     def __init__(self, path: str, od_resolution: int, display_resolution: int) -> None:
         self.filename = path

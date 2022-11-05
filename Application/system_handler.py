@@ -15,23 +15,23 @@ class SystemHandler:
 
         Parameters
         ----------
-        model_loader : Object with models loaded from disk
-        max_cosine_distance : maximal cosine distance for object association
-        max_age : number of frames after track will be deleted
+            model_loader : Object with models loaded from disk
+            max_cosine_distance : maximal cosine distance for object association
+            max_age : number of frames after track will be deleted
 
         Attributes
         ----------
-        detector : object detection model instance
-        od_resolution : resolution required for object detection model, assumed to be square
-        disnet : distance estimation model instance
-        midas : depth estimation model instance
-        tracker : object tracker instance
+            detector : object detection model instance
+            od_resolution : resolution required for object detection model, assumed to be square
+            disnet : distance estimation model instance
+            midas : depth estimation model instance
+            tracker : object tracker instance
 
-        use_midas : estimate depth on an image or not
-        use_disnet : estimate distance of objects or not
-        use_deepsort : track objects ot not
+            use_midas : estimate depth on an image or not
+            use_disnet : estimate distance of objects or not
+            use_deepsort : track objects ot not
 
-        od_threshold : object detection probability threshold
+            od_threshold : object detection probability threshold
 
     """
     def __init__(self, model_loader: ModelLoader, max_cosine_distance: float = 0.5, max_age: int = 5) -> None:
@@ -117,9 +117,9 @@ class SystemHandler:
         """
         Main loop for processing input video: detects objects, annotates frames and displays them
 
-        :param path: path to video file
-        :param out_path: path for output video file
-        :param disp_res: resolution for displayed video, assumed to be square
+            :param path: path to video file
+            :param out_path: path for output video file
+            :param disp_res: resolution for displayed video, assumed to be square
         """
         reader = VideoReader(path, self.od_resolution, disp_res)
         writer = VideoRecorder(out_path, disp_res)

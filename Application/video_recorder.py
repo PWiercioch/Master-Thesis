@@ -8,14 +8,14 @@ class VideoRecorder:
 
         Parameters
         ----------
-        filename : name of the video file to be saved
-        resolution : resolution of recorded video
+            filename : name of the video file to be saved
+            resolution : resolution of recorded video
 
         Attributes
         ----------
-        filename : name of the video file to be saved
-        resolution : resolution of recorded video
-        out : output video writer object
+            filename : name of the video file to be saved
+            resolution : resolution of recorded video
+            out : output video writer object
 
     """
 
