@@ -23,6 +23,7 @@ class VideoReader:
         filename : path to video file
         od_resolution : resolution required for object detection model, assumed to be square
         display_resolution : resolution for displayed video, assumed to be square
+        scale : ratio between object detector required resolution and display resolution
         class_names : mapping be
         frame : read video frame
         frame_t : time of read frame
@@ -31,6 +32,7 @@ class VideoReader:
         self.filename = path
         self.od_resolution = (od_resolution, od_resolution)
         self.display_resolution = (display_resolution, display_resolution)
+        self.scale = int(display_resolution / od_resolution)
 
         self.colors = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in range(50)]
 
@@ -108,10 +110,11 @@ class VideoReader:
         :param distances: estimated distances to objects
         :param ids: list of tracked object ids
         """
-        annonated_frame = PIL.Image.fromarray(cv2.resize(self.frame, self.od_resolution))
+        annonated_frame = PIL.Image.fromarray(cv2.resize(self.frame, self.display_resolution))
         draw = PIL.ImageDraw.Draw(annonated_frame)
 
         for i, box in enumerate(boxes):
+            box = box * self.scale
             class_detected = classes[i]
 
             # maybe move to system handler
@@ -119,7 +122,7 @@ class VideoReader:
 
             color = self.colors[ids[i] % len(self.colors)]
 
-            draw.rectangle(box, outline=color, width=2)
+            draw.rectangle(box, outline=color, width=int(2 * self.scale))
 
             distance = distances[i]
             if distance:
@@ -127,7 +130,7 @@ class VideoReader:
             else:
                 text = self.class_names[class_detected]
 
-            font = PIL.ImageFont.truetype("arial.ttf", 8)
+            font = PIL.ImageFont.truetype("arial.ttf", int(8 * self.scale))
             text_w, text_h = draw.textsize(text, font)
             draw.rectangle((box[0], box[1], box[0] + text_w, box[1] + text_h), fill=color, outline=color)
             draw.text((box[0], box[1]), text, fill=(0, 0, 0), font=font)
