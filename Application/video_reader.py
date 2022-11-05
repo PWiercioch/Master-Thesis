@@ -5,6 +5,7 @@ import PIL.ImageDraw
 import PIL.ImageFont
 import numpy as np
 import random
+import time
 
 
 class VideoReader:
@@ -23,6 +24,8 @@ class VideoReader:
         od_resolution : resolution required for object detection model
         display_resolution : resolution for displayed video
         class_names : mapping be
+        frame : read video frame
+        time : time of read frame
     """
     def __init__(self, path: str, od_resolution: tuple[int, int], display_resolution: tuple[int, int]) -> None:
         self.filename = path
@@ -30,6 +33,9 @@ class VideoReader:
         self.display_resolution = display_resolution
 
         self.colors = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in range(50)]
+
+        self.frame = None
+        self.time = None
 
         self.class_names = {
             1: "person",
@@ -60,6 +66,8 @@ class VideoReader:
             :return[1]: Frame data if valid, 0 if invalid
         """
         ret, self.frame = self.cap.read()
+
+        self.frame_t = time.time()
 
         if not ret:
             return True, np.array([])
@@ -120,5 +128,7 @@ class VideoReader:
             text_w, text_h = draw.textsize(text, font)
             draw.rectangle((box[0], box[1], box[0] + text_w, box[1] + text_h), fill=color, outline=color)
             draw.text((box[0], box[1]), text, fill=(0, 0, 0), font=font)
-        
+
+        draw.text((0, 0), f"{1 / (time.time() - self.frame_t):.3f} fps", fill=(0, 0, 255), font=font)
+
         self.annonated_frame = np.array(annonated_frame)
