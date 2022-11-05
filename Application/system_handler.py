@@ -6,8 +6,7 @@ from models.model_loader import ModelLoader
 from video_reader import VideoReader
 import tensorflow as tf
 import numpy as np
-import cv2
-import PIL.Image
+from video_recorder import VideoRecorder
 
 
 class SystemHandler:
@@ -16,23 +15,23 @@ class SystemHandler:
 
         Parameters
         ----------
-        model_loader : Object with models loaded from disk
-        max_cosine_distance : maximal cosine distance for object association
-        max_age : number of frames after track will be deleted
+            model_loader : Object with models loaded from disk
+            max_cosine_distance : maximal cosine distance for object association
+            max_age : number of frames after track will be deleted
 
         Attributes
         ----------
-        detector : object detection model instance
-        od_resolution : resolution required for object detection model
-        disnet : distance estimation model instance
-        midas : depth estimation model instance
-        tracker : object tracker instance
+            detector : object detection model instance
+            od_resolution : resolution required for object detection model, assumed to be square
+            disnet : distance estimation model instance
+            midas : depth estimation model instance
+            tracker : object tracker instance
 
-        use_midas : estimate depth on an image or not
-        use_disnet : estimate distance of objects or not
-        use_deepsort : track objects ot not
+            use_midas : estimate depth on an image or not
+            use_disnet : estimate distance of objects or not
+            use_deepsort : track objects ot not
 
-        od_threshold : object detection probability threshold
+            od_threshold : object detection probability threshold
 
     """
     def __init__(self, model_loader: ModelLoader, max_cosine_distance: float = 0.5, max_age: int = 5) -> None:
@@ -63,7 +62,7 @@ class SystemHandler:
         boxes = detections['detection_boxes'][ind].numpy()
         classes = detections['detection_classes'][ind].numpy()
 
-        boxes = boxes * self.od_resolution[0]
+        boxes = boxes * self.od_resolution
         boxes = boxes.astype(int)
 
         return boxes, classes, scores
@@ -114,23 +113,25 @@ class SystemHandler:
 
         return frame.astype(np.uint8)
 
-    def process_video(self, path: str, disp_res: tuple[int, int]) -> None:
+    def process_video(self, path: str, out_path: str, disp_res: int) -> None:
         """
         Main loop for processing input video: detects objects, annotates frames and displays them
 
-        :param path: path to video file
-        :param disp_res: resolution for displayed video
+            :param path: path to video file
+            :param out_path: path for output video file
+            :param disp_res: resolution for displayed video, assumed to be square
         """
         reader = VideoReader(path, self.od_resolution, disp_res)
+        writer = VideoRecorder(out_path, disp_res)
 
-        with reader as video:
+        with reader as video, writer as out:
             if not video:  # break if error while opening file
                 return None
 
             with tf.device("/device:GPU:0"):
 
                 while True:
-                    ret, frame = video.get_frame()
+                    ret, frame = video.read_frame()
 
                     if ret:  # break if no valid frame is retrieved
                         break
@@ -152,6 +153,8 @@ class SystemHandler:
                         distances = np.array([None] * len(boxes))
 
                     reader.annonate_image(boxes, classes, distances, ids)
+
+                    out.write(video.get_frame())
 
                     if reader.show_frame():  # break on user interrupt
                         break

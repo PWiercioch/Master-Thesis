@@ -14,28 +14,31 @@ class VideoReader:
 
         Parameters
         ----------
-        path : path to video file
-        od_resolution : resolution required for object detection model
-        display_resolution : resolution for displayed video
+            path : path to video file
+            od_resolution : resolution required for object detection model
+            display_resolution : resolution for displayed video
 
         Attributes
         ----------
-        filename : path to video file
-        od_resolution : resolution required for object detection model
-        display_resolution : resolution for displayed video
-        class_names : mapping be
-        frame : read video frame
-        time : time of read frame
+            filename : path to video file
+            od_resolution : resolution required for object detection model, assumed to be square
+            display_resolution : resolution for displayed video, assumed to be square
+            scale : ratio between object detector required resolution and display resolution
+            class_names : mapping be
+            frame : read video frame
+            frame_t : time of read frame
+            cap : input video reader object
     """
-    def __init__(self, path: str, od_resolution: tuple[int, int], display_resolution: tuple[int, int]) -> None:
+    def __init__(self, path: str, od_resolution: int, display_resolution: int) -> None:
         self.filename = path
-        self.od_resolution = od_resolution
-        self.display_resolution = display_resolution
+        self.od_resolution = (od_resolution, od_resolution)
+        self.display_resolution = (display_resolution, display_resolution)
+        self.scale = display_resolution / od_resolution
 
         self.colors = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in range(50)]
 
         self.frame = None
-        self.time = None
+        self.frame_t = None
 
         self.class_names = {
             1: "person",
@@ -50,7 +53,7 @@ class VideoReader:
 
     def __enter__(self) -> VideoReader:
         self.cap = cv2.VideoCapture(self.filename)
-        if self.cap.isOpened() == False:
+        if not self.cap.isOpened():
             return False
         return self
 
@@ -58,7 +61,7 @@ class VideoReader:
         self.cap.release()
         cv2.destroyAllWindows()
 
-    def get_frame(self) -> tuple[bool, np.ndarray]:
+    def read_frame(self) -> tuple[bool, np.ndarray]:
         """
         Method for retrieving frame from video file
 
@@ -76,6 +79,9 @@ class VideoReader:
 
     def set_frame(self, frame: np.ndarray) -> None:
         self.frame = frame
+
+    def get_frame(self) -> np.ndarray:
+        return self.annonated_frame
 
     def show_frame(self, annotated: bool = True) -> Union[bool, None]:
         """
@@ -105,8 +111,13 @@ class VideoReader:
         :param distances: estimated distances to objects
         :param ids: list of tracked object ids
         """
-        annonated_frame = PIL.Image.fromarray(cv2.resize(self.frame, self.od_resolution))
+        annonated_frame = PIL.Image.fromarray(cv2.resize(self.frame, self.display_resolution))
         draw = PIL.ImageDraw.Draw(annonated_frame)
+
+        font = PIL.ImageFont.truetype("arial.ttf", int(8 * self.scale))
+
+        boxes = boxes * self.scale
+        boxes = boxes.astype(int)
 
         for i, box in enumerate(boxes):
             class_detected = classes[i]
@@ -116,7 +127,7 @@ class VideoReader:
 
             color = self.colors[ids[i] % len(self.colors)]
 
-            draw.rectangle(box, outline=color, width=2)
+            draw.rectangle(box, outline=color, width=int(2 * self.scale))
 
             distance = distances[i]
             if distance:
@@ -124,7 +135,6 @@ class VideoReader:
             else:
                 text = self.class_names[class_detected]
 
-            font = PIL.ImageFont.truetype("arial.ttf", 8)
             text_w, text_h = draw.textsize(text, font)
             draw.rectangle((box[0], box[1], box[0] + text_w, box[1] + text_h), fill=color, outline=color)
             draw.text((box[0], box[1]), text, fill=(0, 0, 0), font=font)

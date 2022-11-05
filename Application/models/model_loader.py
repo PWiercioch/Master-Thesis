@@ -9,7 +9,7 @@ class ModelLoader:
         Parameters
         ---------
             od_model_path : path to object detection model
-            od_resolution : resolution required for object detection model
+            od_resolution : resolution required for object detection model, assumed to be square
             dis_model_path : path to distance estimation model
             midas_path : path to depth estimation model
 
@@ -20,7 +20,7 @@ class ModelLoader:
             distance_model : distance estimation model instance
             depth_model : depth estimation model instance
     """
-    def __init__(self, od_model_path: str, od_resolution: tuple[int, int], dis_model_path: str, midas_path: str) -> None:
+    def __init__(self, od_model_path: str, od_resolution: int, dis_model_path: str, midas_path: str) -> None:
         self.load_detection_model(od_model_path)
         self.od_resolution = od_resolution
         self.load_distance_model(dis_model_path)
