@@ -28,6 +28,7 @@ class VideoReader:
             frame : read video frame
             frame_t : time of read frame
             cap : input video reader object
+            frames :
     """
     def __init__(self, path: str, od_resolution: int, display_resolution: int) -> None:
         self.filename = path
@@ -37,7 +38,6 @@ class VideoReader:
 
         self.colors = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in range(50)]
 
-        self.frame = None
         self.frame_t = None
 
         self.class_names = {
@@ -50,6 +50,8 @@ class VideoReader:
             7: "animal",
             8: "obstacle"
         }
+
+        self.frames = {"raw": None, "annotated": None}  # TODO - store frames at different stages
 
     def __enter__(self) -> VideoReader:
         self.cap = cv2.VideoCapture(self.filename)
@@ -68,20 +70,37 @@ class VideoReader:
             :return[0]: True if frame not valid, False if valid
             :return[1]: Frame data if valid, 0 if invalid
         """
-        ret, self.frame = self.cap.read()
+        ret, self.frames["raw"] = self.cap.read()
 
         self.frame_t = time.time()
 
         if not ret:
             return True, np.array([])
 
-        return False, cv2.resize(self.frame, self.od_resolution)
+        return False, cv2.resize(self.frames["raw"], self.od_resolution)
 
-    def set_frame(self, frame: np.ndarray) -> None:
-        self.frame = frame
+    def set_frame(self, frame: np.ndarray, key: str) -> None:
+        """
 
-    def get_frame(self) -> np.ndarray:
-        return self.annonated_frame
+            :param frame:
+            :param key:
+            :return:
+        """
+        try:
+            self.frames[key] = frame
+        except KeyError:
+            self.frames["raw"] = frame
+
+    def get_frame(self, key: str) -> np.ndarray:
+        """
+
+            :param key:
+            :return:
+        """
+        try:
+            return self.frames[key]
+        except KeyError:
+            return self.frames[key]
 
     def show_frame(self, annotated: bool = True) -> Union[bool, None]:
         """
@@ -91,27 +110,29 @@ class VideoReader:
 
             :return: True if user interrupt
         """
-        if annotated:
-            frame = self.annonated_frame
+        if annotated:  # TODO - not necessary - refactor
+            frame = self.frames["annotated"]
         else:
-            frame = self.frame
+            frame = self.frames["raw"]
 
         cv2.imshow('', cv2.resize(frame, self.display_resolution))
 
         if cv2.waitKey(1) == ord('q'):
             return True
 
-    # TODO - add scaling in annotation
-    def annonate_image(self, boxes: np.ndarray, classes: np.ndarray, distances: np.ndarray, ids: np.ndarray) -> None:
+    def annonate_image(self, frame: np.ndarray, boxes: np.ndarray, classes: np.ndarray, distances: np.ndarray,
+                       ids: np.ndarray, comment: str = "") -> None:
         """
         Method for annotating images with bounding boxes
 
+        :param frame:
         :param boxes: bounding boxes indices from object detection model
         :param classes: classes ids from object detection model
         :param distances: estimated distances to objects
         :param ids: list of tracked object ids
+        :param comment:
         """
-        annonated_frame = PIL.Image.fromarray(cv2.resize(self.frame, self.display_resolution))
+        annonated_frame = PIL.Image.fromarray(cv2.resize(frame, self.display_resolution))
         draw = PIL.ImageDraw.Draw(annonated_frame)
 
         font = PIL.ImageFont.truetype("arial.ttf", int(8 * self.scale))
@@ -139,6 +160,6 @@ class VideoReader:
             draw.rectangle((box[0], box[1], box[0] + text_w, box[1] + text_h), fill=color, outline=color)
             draw.text((box[0], box[1]), text, fill=(0, 0, 0), font=font)
 
-        draw.text((0, 0), f"{1 / (time.time() - self.frame_t):.3f} fps", fill=(0, 0, 255), font=font)
+        draw.text((0, 0), f"{1 / (time.time() - self.frame_t):.3f} fps\n{comment}", fill=(0, 0, 255), font=font)
 
-        self.annonated_frame = np.array(annonated_frame)
+        self.frames["annotated"] = np.array(annonated_frame)

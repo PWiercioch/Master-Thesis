@@ -6,7 +6,7 @@ import cv2
 
 class MiDas:
     """
-    This is a handler class for depth estimation model
+    This is a handler class for inverse relative depth estimation model
 
         Parameters
         ----------
@@ -39,7 +39,7 @@ class MiDas:
 
     def __post_process(self, output: dict, img: np.ndarray) -> np.ndarray:
         """
-        Process depth estimation output to get depth image
+        Process inverse relative depth estimation output to get depth image
 
             :param output: output from depth estimation model
             :param img: image for depth estimation
@@ -58,7 +58,7 @@ class MiDas:
 
     def predict(self, img: np.ndarray) -> np.ndarray:
         """
-        Estiamte depth in an image
+        Estimate inverse relative depth in an image
 
             :param img: image for depth estimation
 

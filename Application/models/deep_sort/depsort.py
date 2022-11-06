@@ -5,6 +5,7 @@ from . import generate_detections as gdet
 import numpy as np
 
 
+# TODO - maybe store object distances as dict (needed to be cleared every frame)
 class DeepSort:
     """
     Wrapper for DeepSORT model

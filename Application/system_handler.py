@@ -24,12 +24,16 @@ class SystemHandler:
             detector : object detection model instance
             od_resolution : resolution required for object detection model, assumed to be square
             disnet : distance estimation model instance
-            midas : depth estimation model instance
+            midas : inverse relative depth estimation model instance
             tracker : object tracker instance
+            distance_regressor : object for distance regression
 
             use_midas : estimate depth on an image or not
             use_disnet : estimate distance of objects or not
             use_deepsort : track objects ot not
+
+            record_annotated :
+            alpha_blending :
 
             od_threshold : object detection probability threshold
 
@@ -40,10 +44,14 @@ class SystemHandler:
         self.disnet = DisNet(model_loader.distance_model)
         self.midas = MiDas(model_loader.depth_model)
         self.tracker = DeepSort(max_cosine_distance, max_age)
+        self.distance_regressor = model_loader.distance_regressor
 
         self.use_midas = True  # maybe provide a parameter or getter/setter
         self.use_disnet = True  # maybe provide a parameter or getter/setter
         self.use_deepsort = True  # maybe provide a parameter or getter/setter
+
+        self.record_annotated = True  # maybe provide a parameter or getter/setter
+        self.alpha_blending = True  # maybe provide a parameter or getter/setter
 
         self.od_threshold = 0.6  # maybe provide a parameter or getter/setter
 
@@ -89,9 +97,9 @@ class SystemHandler:
 
         return np.array(distances)
 
-    def __get_depth(self, frame: np.ndarray) -> np.ndarray:
+    def __get_depth(self, frame: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
-        Method for estimating depth of a frame
+        Method for estimating inverse relative depth of a frame
 
             :param frame: frame for depth estimation
 
@@ -111,7 +119,7 @@ class SystemHandler:
         blank = (1.0 - alpha) * blank
         frame = frame + blank
 
-        return frame.astype(np.uint8)
+        return frame.astype(np.uint8), a
 
     def process_video(self, path: str, out_path: str, disp_res: int) -> None:
         """
@@ -144,17 +152,33 @@ class SystemHandler:
                         ids = np.array([0] * len(boxes))
 
                     if self.use_midas:
-                        depth_frame = self.__get_depth(frame)
-                        reader.set_frame(depth_frame)
+                        depth_frame, inv_rel_depth = self.__get_depth(frame)
+                        if self.alpha_blending:
+                            reader.set_frame(depth_frame, "raw")
+                        else:
+                            reader.set_frame(inv_rel_depth, "raw")
 
                     if self.use_disnet:
                         distances = self.__get_distances(boxes, classes)
                     else:
                         distances = np.array([None] * len(boxes))
 
-                    reader.annonate_image(boxes, classes, distances, ids)
+                    fit_status, distance_frame = self.distance_regressor.predict(inv_rel_depth,  boxes, distances)
+                    # TODO - add logging of a distance frame
 
-                    out.write(video.get_frame())
+                    if fit_status:  # If regression complete push distance frame futher
+                        valid_frame = video.get_frame("raw")
+                        comment = "Depth extracted"
+                    else:  # If not use valid frame (rgb or inverse relative depth)
+                        valid_frame = video.get_frame("raw")
+                        comment = ""
+
+                    reader.annonate_image(valid_frame, boxes, classes, distances, ids, comment)
+
+                    if self.record_annotated:
+                        out.write(video.get_frame("annotated"))
+                    else:
+                        out.write(video.get_frame("raw"))
 
                     if reader.show_frame():  # break on user interrupt
                         break
