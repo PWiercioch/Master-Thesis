@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.linear_model import LinearRegression
-from base_regressor import BaseRegressor
+from .base_regressor import BaseRegressor
 
 
 class LinearRegressor(BaseRegressor):
@@ -14,7 +14,7 @@ class LinearRegressor(BaseRegressor):
         self.inverse_model.fit(distances, regions)
 
     def predict(self, frame):
-        return self.model.predict(frame)
+        return self.model.coef_ * frame + self.model.intercept_
 
     def predict_inverse(self, region):
-        return self.inverse_model.predict(region)
+        return self.inverse_model.coef_ * region + self.inverse_model.intercept_

@@ -3,6 +3,10 @@ from .regressors.linear_regressor import LinearRegressor
 
 
 class DistanceRegressor:
+    """
+    Method for acquiring absolute distance from relative inverse depth and distance measurements
+
+    """
     def __init__(self, extractor_type, regressor_type, **kwargs):
         super().__init__()
         self.extractor = self.__get_extractor(extractor_type)(**kwargs)

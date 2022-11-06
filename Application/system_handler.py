@@ -24,8 +24,9 @@ class SystemHandler:
             detector : object detection model instance
             od_resolution : resolution required for object detection model, assumed to be square
             disnet : distance estimation model instance
-            midas : depth estimation model instance
+            midas : inverse relative depth estimation model instance
             tracker : object tracker instance
+            distance_regressor : object for distance regression
 
             use_midas : estimate depth on an image or not
             use_disnet : estimate distance of objects or not
@@ -40,6 +41,7 @@ class SystemHandler:
         self.disnet = DisNet(model_loader.distance_model)
         self.midas = MiDas(model_loader.depth_model)
         self.tracker = DeepSort(max_cosine_distance, max_age)
+        self.distance_regressor = model_loader.distance_regressor
 
         self.use_midas = True  # maybe provide a parameter or getter/setter
         self.use_disnet = True  # maybe provide a parameter or getter/setter
@@ -91,7 +93,7 @@ class SystemHandler:
 
     def __get_depth(self, frame: np.ndarray) -> np.ndarray:
         """
-        Method for estimating depth of a frame
+        Method for estimating inverse relative depth of a frame
 
             :param frame: frame for depth estimation
 
