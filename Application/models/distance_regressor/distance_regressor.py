@@ -1,5 +1,6 @@
 from .extractors.mean_extractor import MeanExtractor
 from .regressors.linear_regressor import LinearRegressor
+import numpy as np
 
 
 class DistanceRegressor:
@@ -28,9 +29,12 @@ class DistanceRegressor:
             print("Wrong key for regressor type \n Choosing LinearRegressor")
             return LinearRegressor
 
-    def predict(self, frame, alpha, boxes, distances):
+    def predict(self, alpha, boxes, distances):
         regions = self.extractor.extract_regions(alpha, boxes)
 
-        self.regression_model.fit(regions, distances)
+        fitted = self.regression_model.fit(regions, distances)
 
-        return self.regression_model.predict(frame)
+        if fitted:
+            return True, self.regression_model.predict(alpha)
+        else:
+            return False, np.empty([0, 0])

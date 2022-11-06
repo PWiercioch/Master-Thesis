@@ -8,10 +8,20 @@ class LinearRegressor(BaseRegressor):
         super().__init__(**kwargs)
         self.model = LinearRegression()
         self.inverse_model = LinearRegression()
+        self.initialized = False  # TODO could allow to make predictions for model fitted with past frames (with max age)
+        # TODO - also probably could use information about past tracked objects
 
     def fit(self, regions, distances):
-        self.model.fit(regions, distances)
-        self.inverse_model.fit(distances, regions)
+        # TODO move data cleaning to a parent class
+        regions = regions[regions != None]
+        distances = distances[distances != None]
+        if len(distances) >= 2:
+            self.model.fit(regions.reshape(-1, 1), distances.reshape(-1, 1))
+            self.inverse_model.fit(distances.reshape(-1, 1), regions.reshape(-1, 1))
+            self.initialized = True
+            return True
+        else:
+            return False
 
     def predict(self, frame):
         return self.model.coef_ * frame + self.model.intercept_
