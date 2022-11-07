@@ -9,10 +9,14 @@ class PointCloudHandler:
 
     """
     def __init__(self, rgb: str, depth: str) -> None:
-        self.cap1 = cv2.VideoCapture(rgb)
-        self.cap2 = cv2.VideoCapture(depth)
+        self.rgb_path = rgb
+        self.depth_path = depth
 
         self.pinhole_camera_intrinsic = o3d.camera.PinholeCameraIntrinsic(o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault)
+
+    def __open(self):
+        self.cap1 = cv2.VideoCapture(self.rgb_path)
+        self.cap2 = cv2.VideoCapture(self.depth_path)
 
     def __close(self) -> None:
         """
@@ -21,16 +25,22 @@ class PointCloudHandler:
         self.cap1.release()
         self.cap2.release()
 
-    def get_point_cloud(self, rgb, depth):
+    def read_video(self):
+        ret1, self.rgb_frame = self.cap1.read()
+        ret2, self.depth_frame = self.cap2.read()
+
+        self.ret = ret1 and ret2
+
+    def get_point_cloud(self):
         """
 
         :param rgb:
         :param depth:
         :return:
         """
-        depth = np.invert(depth)
+        depth = np.invert(self.depth_frame[::, ::, 0])
         depth = depth /2 + 100
-        o3d_rgb = o3d.geometry.Image(rgb)
+        o3d_rgb = o3d.geometry.Image(self.rgb_frame)
         o3d_a = o3d.geometry.Image(depth.astype(np.uint8))
 
         rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(
@@ -40,71 +50,61 @@ class PointCloudHandler:
 
         return pcd
 
+    def prepare_point_cloud(self):
+        pcd = self.get_point_cloud()
+
+        flip_transform = [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
+        pcd.transform(flip_transform)
+
+        return pcd
+
+    def change_viewport(self, v):
+        control = v.get_view_control()
+        # control.set_lookat([1, 1, 0])
+        control.set_zoom(0.2)
+        control.translate(100, 0, 0)
+        v.register_animation_callback(self.update_view)
+
+    def update_view(self, v):
+        self.read_video()
+        if self.ret:
+            pcd = self.prepare_point_cloud()
+
+            self.pcd.points = pcd.points
+            self.pcd.colors = pcd.colors
+            v.update_geometry(self.pcd)
+            v.register_animation_callback(self.update_view)
+
+        else:
+            v.register_animation_callback(self.stop_animation)
+
+    def stop_animation(self, v):
+        v.destroy_window()
+        self.__close()
 
     def show(self) -> None:
         """
 
         :return:
         """
+        self.__open()
+
         # create visualization window
         vis = o3d.visualization.Visualizer()
         vis.create_window(width=800, height=800)
 
-        # geometry is the point cloud used in your animaiton
+        # create geometry
         geometry = o3d.geometry.PointCloud()
         vis.add_geometry(geometry)
 
-        def change_viewport(v):
-            control = v.get_view_control()
-            # control.set_lookat([1, 1, 0])
-            control.set_zoom(0.2)
-            control.translate(100, 0, 0)
-            v.register_animation_callback(update_view)
+        self.read_video()
 
-        def update_view(v):
-            ret1, rgb = self.cap1.read()
-            ret2, depth = self.cap2.read()
+        if self.ret:
+            self.pcd = self.prepare_point_cloud()
 
+            vis.register_animation_callback(self.change_viewport)
 
-            if ret1 and ret2:
-                # v.clear_geometries()
-                pcd1 = self.get_point_cloud(rgb, depth[::, ::, 0])
-
-                flip_transform = [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
-                pcd1.transform(flip_transform)
-
-                pcd.points = pcd1.points
-                pcd.colors = pcd1.colors
-                vis.update_geometry(pcd)
-                # v.add_geometry(pcd)
-                # v.update_renderer()
-                v.register_animation_callback(update_view)
-
-        # while (self.cap1.isOpened() and self.cap1.isOpened()):
-        ret1, rgb = self.cap1.read()
-        ret2, depth = self.cap2.read()
-
-        if ret1 and ret2:
-            pcd = self.get_point_cloud(rgb, depth[::, ::, 0])
-
-            flip_transform = [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
-            pcd.transform(flip_transform)
-
-            vis.register_animation_callback(change_viewport)
-
-            vis.add_geometry(pcd)
-            vis.poll_events()
-            vis.update_renderer()
+            vis.add_geometry(self.pcd)
 
             vis.run()
-
-        self.__close()
-
-
-
-
-            # else:
-            #     break
-
-        vis.destroy_window()
 
