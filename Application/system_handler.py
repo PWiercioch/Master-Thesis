@@ -50,8 +50,10 @@ class SystemHandler:
         self.use_disnet = True  # maybe provide a parameter or getter/setter
         self.use_deepsort = True  # maybe provide a parameter or getter/setter
 
-        self.record_annotated = True  # maybe provide a parameter or getter/setter
-        self.alpha_blending = True  # maybe provide a parameter or getter/setter
+        self.config = {
+            "record_annotated": True,
+            "record_alpha_blended": True
+        }  # maybe provide a parameter or getter/setter
 
         self.od_threshold = 0.6  # maybe provide a parameter or getter/setter
 
@@ -119,7 +121,33 @@ class SystemHandler:
         blank = (1.0 - alpha) * blank
         frame = frame + blank
 
-        return frame.astype(np.uint8), a
+        # Only for recording purposes
+        alpha = alpha * 255
+        alpha = alpha.astype(np.uint8)
+        alpha = np.invert(alpha)
+
+        return frame.astype(np.uint8), alpha.astype(np.uint8)
+
+    def calculate_focals(self, boxes, classes, distances):
+        vertical = []
+        horizontal = []
+
+        for box, object_class, distance in zip(boxes, classes, distances):
+            if object_class in self.disnet.class_sizes.keys() and distance:
+                real_height = self.disnet.class_sizes[object_class]['size'][0]
+                real_width = self.disnet.class_sizes[object_class]['size'][1]
+
+                # TODO -check if not other way around
+                calc_height = abs(box[2] - box[0])
+                calc_width = abs(box[3] - box[1])
+
+                vertical.append((calc_height * distance) / (real_height / 100) * 0.265)  # convert distance units to meters and then pixels to mm
+                horizontal.append((calc_width * distance) / (real_width / 100) * 0.265)  # convert distance units to meters and then pixels to mm
+            else:
+                vertical.append(None)
+                horizontal.append(None)
+
+        return vertical, horizontal
 
     def process_video(self, path: str, out_path: str, disp_res: int) -> None:
         """
@@ -153,18 +181,21 @@ class SystemHandler:
 
                     if self.use_midas:
                         depth_frame, inv_rel_depth = self.__get_depth(frame)
-                        if self.alpha_blending:
-                            reader.set_frame(depth_frame, "raw")
-                        else:
-                            reader.set_frame(inv_rel_depth, "raw")
+                        reader.set_frame(depth_frame, "raw")
+                        reader.set_frame(inv_rel_depth, "alpha_record")
 
                     if self.use_disnet:
                         distances = self.__get_distances(boxes, classes)
                     else:
                         distances = np.array([None] * len(boxes))
 
-                    fit_status, distance_frame = self.distance_regressor.predict(inv_rel_depth,  boxes, distances)
-                    # TODO - add logging of a distance frame
+                    focal_v, focal_h = self.calculate_focals(boxes, classes, distances)
+
+                    if self.use_midas and self.use_disnet:
+                        fit_status, distance_frame = self.distance_regressor.predict(inv_rel_depth,  boxes, distances)
+                        # TODO - add logging of a distance frame
+                    else:
+                        fit_status = False
 
                     if fit_status:  # If regression complete push distance frame futher
                         valid_frame = video.get_frame("raw")
@@ -175,10 +206,25 @@ class SystemHandler:
 
                     reader.annonate_image(valid_frame, boxes, classes, distances, ids, comment)
 
-                    if self.record_annotated:
-                        out.write(video.get_frame("annotated"))
+                    ### Writing video
+                    if self.config["record_alpha_blended"]:
+                        if self.config["record_annotated"]:
+                            out.write(video.get_frame("annotated"))
+                        else:
+                            out.write(video.get_frame("raw"))
                     else:
-                        out.write(video.get_frame("raw"))
+                        if self.use_midas:
+                            out.write(video.get_frame("alpha_record"))
+                        else:
+                            out.write(video.get_frame("raw"))
+
+                    ### Writing log
+                    if fit_status:
+                        coefs = self.distance_regressor.regression_model.get_coeffs()
+                    else:
+                        coefs = None
+
+                    out.log(boxes, classes, scores, distances, focal_v, focal_h, coefs, comment)
 
                     if reader.show_frame():  # break on user interrupt
                         break

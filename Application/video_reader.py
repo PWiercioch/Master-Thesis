@@ -51,7 +51,7 @@ class VideoReader:
             8: "obstacle"
         }
 
-        self.frames = {"raw": None, "annotated": None}  # TODO - store frames at different stages
+        self.frames = {"raw": None, "annotated": None, "alpha_record": None}  # TODO - store frames at different stages
 
     def __enter__(self) -> VideoReader:
         self.cap = cv2.VideoCapture(self.filename)

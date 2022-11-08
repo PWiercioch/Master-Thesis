@@ -6,6 +6,10 @@ class BaseRegressor(ABC):
         pass
 
     @abstractmethod
+    def get_coeffs(self):
+        pass
+
+    @abstractmethod
     def fit(self, regions, distances):
         pass
 

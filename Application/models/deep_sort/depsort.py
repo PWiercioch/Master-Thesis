@@ -43,6 +43,7 @@ class DeepSort:
             :return: list of features for tracker
         """
         boxes = np.array(boxes)
+        # TODO -check if width and height are correctly placed 
         boxes = [[box[0], box[1], abs(box[2] - box[0]), abs(box[3] - box[1])] for box in boxes]
         names = np.array(classes)
         scores = np.array(scores) + 0.2
