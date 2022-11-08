@@ -8,11 +8,12 @@ class PointCloudHandler:
     """
 
     """
-    def __init__(self, rgb: str, depth: str) -> None:
+    def __init__(self, rgb: str, depth: str, params: list[int, int, float, float, float, float]) -> None:
         self.rgb_path = rgb
         self.depth_path = depth
+        self.pause = False
 
-        self.pinhole_camera_intrinsic = o3d.camera.PinholeCameraIntrinsic(o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault)
+        self.pinhole_camera_intrinsic = o3d.camera.PinholeCameraIntrinsic(*params)
 
     def __open(self):
         self.cap1 = cv2.VideoCapture(self.rgb_path)
@@ -56,31 +57,46 @@ class PointCloudHandler:
         flip_transform = [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
         pcd.transform(flip_transform)
 
+        pcd = pcd.uniform_down_sample(every_k_points=22)
+
         return pcd
 
     def change_viewport(self, v):
         control = v.get_view_control()
         # control.set_lookat([1, 1, 0])
-        control.set_zoom(0.2)
-        control.translate(100, 0, 0)
+        control.set_zoom(0.5)
+        control.translate(-50, 0, 0)
         v.register_animation_callback(self.update_view)
 
     def update_view(self, v):
-        self.read_video()
-        if self.ret:
-            pcd = self.prepare_point_cloud()
-
-            self.pcd.points = pcd.points
-            self.pcd.colors = pcd.colors
-            v.update_geometry(self.pcd)
+        if self.pause:
+            time.sleep(0.1)
             v.register_animation_callback(self.update_view)
-
         else:
-            v.register_animation_callback(self.stop_animation)
+            self.read_video()
+            if self.ret:
+                pcd = self.prepare_point_cloud()
+
+                self.pcd.points = pcd.points
+                self.pcd.colors = pcd.colors
+                v.update_geometry(self.pcd)
+                v.register_animation_callback(self.update_view)
+
+            else:
+                v.register_animation_callback(self.stop_animation)
 
     def stop_animation(self, v):
         v.destroy_window()
         self.__close()
+
+    def key_action_callback(self, vis, action, mods):
+        if action == 1:  # key down
+            if self.pause:
+                self.pause = False
+            else:
+                self.pause = True
+
+        return True
 
     def show(self) -> None:
         """
@@ -90,12 +106,14 @@ class PointCloudHandler:
         self.__open()
 
         # create visualization window
-        vis = o3d.visualization.Visualizer()
+        vis = o3d.visualization.VisualizerWithKeyCallback()
         vis.create_window(width=800, height=800)
 
         # create geometry
         geometry = o3d.geometry.PointCloud()
         vis.add_geometry(geometry)
+        # key_action_callback will be triggered when there's a keyboard press, release or repeat event
+        vis.register_key_action_callback(32, self.key_action_callback)  # space
 
         self.read_video()
 
