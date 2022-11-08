@@ -11,9 +11,12 @@ class LinearRegressor(BaseRegressor):
         self.initialized = False  # TODO could allow to make predictions for model fitted with past frames (with max age)
         # TODO - also probably could use information about past tracked objects
 
+    def get_coeffs(self):
+        return self.model.coef_, self.model.intercept_
+
     def fit(self, regions, distances):
         # TODO move data cleaning to a parent class
-        regions = regions[regions != None]
+        regions = regions[distances != None]
         distances = distances[distances != None]
         if len(distances) >= 2:
             self.model.fit(regions.reshape(-1, 1), distances.reshape(-1, 1))
