@@ -123,8 +123,31 @@ class SystemHandler:
 
         # Only for recording purposes
         alpha = alpha * 255
+        alpha = alpha.astype(np.uint8)
+        alpha = np.invert(alpha)
 
         return frame.astype(np.uint8), alpha.astype(np.uint8)
+
+    def calculate_focals(self, boxes, classes, distances):
+        vertical = []
+        horizontal = []
+
+        for box, object_class, distance in zip(boxes, classes, distances):
+            if object_class in self.disnet.class_sizes.keys() and distance:
+                real_height = self.disnet.class_sizes[object_class]['size'][0]
+                real_width = self.disnet.class_sizes[object_class]['size'][1]
+
+                # TODO -check if not other way around
+                calc_height = abs(box[2] - box[0])
+                calc_width = abs(box[3] - box[1])
+
+                vertical.append((calc_height * distance) / (real_height / 100) * 0.265)  # convert distance units to meters and then pixels to mm
+                horizontal.append((calc_width * distance) / (real_width / 100) * 0.265)  # convert distance units to meters and then pixels to mm
+            else:
+                vertical.append(None)
+                horizontal.append(None)
+
+        return vertical, horizontal
 
     def process_video(self, path: str, out_path: str, disp_res: int) -> None:
         """
@@ -166,6 +189,8 @@ class SystemHandler:
                     else:
                         distances = np.array([None] * len(boxes))
 
+                    focal_v, focal_h = self.calculate_focals(boxes, classes, distances)
+
                     if self.use_midas and self.use_disnet:
                         fit_status, distance_frame = self.distance_regressor.predict(inv_rel_depth,  boxes, distances)
                         # TODO - add logging of a distance frame
@@ -181,6 +206,7 @@ class SystemHandler:
 
                     reader.annonate_image(valid_frame, boxes, classes, distances, ids, comment)
 
+                    ### Writing video
                     if self.config["record_alpha_blended"]:
                         if self.config["record_annotated"]:
                             out.write(video.get_frame("annotated"))
@@ -191,6 +217,14 @@ class SystemHandler:
                             out.write(video.get_frame("alpha_record"))
                         else:
                             out.write(video.get_frame("raw"))
+
+                    ### Writing log
+                    if fit_status:
+                        coefs = self.distance_regressor.regression_model.get_coeffs()
+                    else:
+                        coefs = None
+
+                    out.log(boxes, classes, scores, distances, focal_v, focal_h, coefs, comment)
 
                     if reader.show_frame():  # break on user interrupt
                         break
