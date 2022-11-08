@@ -2,6 +2,7 @@ import open3d as o3d
 import cv2
 import numpy as np
 import time
+import pandas as pd
 
 
 class PointCloudHandler:
@@ -11,6 +12,8 @@ class PointCloudHandler:
     def __init__(self, rgb: str, depth: str, params: list[int, int, float, float, float, float]) -> None:
         self.rgb_path = rgb
         self.depth_path = depth
+        log_path = f"{depth[:-4]}.pickle"
+        self.log = pd.read_pickle(log_path)
         self.pause = False
 
         self.pinhole_camera_intrinsic = o3d.camera.PinholeCameraIntrinsic(*params)
@@ -18,6 +21,7 @@ class PointCloudHandler:
     def __open(self):
         self.cap1 = cv2.VideoCapture(self.rgb_path)
         self.cap2 = cv2.VideoCapture(self.depth_path)
+        self.frame_num = 0
 
     def __close(self) -> None:
         """
@@ -39,13 +43,18 @@ class PointCloudHandler:
         :param depth:
         :return:
         """
-        depth = np.invert(self.depth_frame[::, ::, 0])
-        depth = depth /2 + 100
-        o3d_rgb = o3d.geometry.Image(self.rgb_frame)
-        o3d_a = o3d.geometry.Image(depth.astype(np.uint8))
+        depth = self.depth_frame[::, ::, 0] * 0.09476 + 5.5
+        # This is in meters, technically should be converted to mm but it seems to wrok the same
 
-        rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(
-            o3d_rgb, o3d_a)
+        # convert bgr to rgb
+        rgb = self.rgb_frame.copy()
+        rgb[::, ::, 0] = self.rgb_frame[::, ::, 2]
+        rgb[::, ::, 2] = self.rgb_frame[::, ::, 0]
+
+        o3d_rgb = o3d.geometry.Image(rgb)
+        o3d_a = o3d.geometry.Image(depth.astype(np.float32))
+
+        rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(o3d_rgb, o3d_a, convert_rgb_to_intensity=False)
 
         pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, self.pinhole_camera_intrinsic)
 
@@ -81,6 +90,7 @@ class PointCloudHandler:
                 self.pcd.colors = pcd.colors
                 v.update_geometry(self.pcd)
                 v.register_animation_callback(self.update_view)
+                self.frame_num += 1
 
             else:
                 v.register_animation_callback(self.stop_animation)
