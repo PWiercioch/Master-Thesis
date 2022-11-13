@@ -6,6 +6,7 @@ from models.model_loader import ModelLoader
 from video_reader import VideoReader
 import tensorflow as tf
 import numpy as np
+import cv2
 from video_recorder import VideoRecorder
 from wrappers.detection_wrapper import DetectionWrapper
 from wrappers.distance_wrapper import DistanceWrapper
@@ -62,8 +63,28 @@ class SystemHandler(DetectionWrapper, DistanceWrapper, DeothWrapper, PointCloudW
 
         self.od_threshold = 0.6  # maybe provide a parameter or getter/setter
 
-    def process_img(self, path: str):
-        pass
+    def process_img(self, path: str, disp_res):
+        img = cv2.imread(path, 1)
+        img = cv2.resize(img, (self.od_resolution, self.od_resolution))
+
+        reader = VideoReader(path, self.od_resolution, disp_res)
+
+        ids, boxes, classes, scores = self._process_detections(img)
+
+        depth_frame, inv_rel_depth = self._process_depth(reader, img)
+
+        distances = self._process_distances(boxes, classes)
+
+        focal_v, focal_h = self.calculate_focals(boxes, classes, distances)
+
+        fit_status = self._process_regression(inv_rel_depth,  boxes, distances)
+
+        reader.annonate_image(reader.get_frame("raw"), boxes, classes, distances, ids, str("fit_status"))
+
+
+        cv2.imshow('', reader.get_frame("annotated"))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
     def process_video(self, path: str, out_path: str, disp_res: int) -> None:
         """

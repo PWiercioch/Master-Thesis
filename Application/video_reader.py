@@ -38,7 +38,7 @@ class VideoReader:
 
         self.colors = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in range(50)]
 
-        self.frame_t = None
+        self.frame_t = time.time()
 
         self.class_names = {
             1: "person",
