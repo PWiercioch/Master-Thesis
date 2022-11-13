@@ -1,42 +1,31 @@
+from abc import ABC, abstractmethod
 import open3d as o3d
-import cv2
 import numpy as np
 import time
 import pandas as pd
 
 
-class PointCloudHandler:
-    """
 
-    """
-    def __init__(self, rgb: str, depth: str, params: list[int, int, float, float, float, float]) -> None:
-        self.rgb_path = rgb
-        self.depth_path = depth
-        log_path = f"{depth[:-4]}.pickle"
-        self.log = pd.read_pickle(log_path)
+class PointCloudBase(ABC):
+    def __init__(self, params):
         self.pause = False
+        self.ret = False
 
         self.pinhole_camera_intrinsic = o3d.camera.PinholeCameraIntrinsic(*params)
 
-    def __open(self):
-        self.cap1 = cv2.VideoCapture(self.rgb_path)
-        self.cap2 = cv2.VideoCapture(self.depth_path)
-        self.frame_num = 0
+    @abstractmethod
+    def __read_data(self):
+        pass
 
-    def __close(self) -> None:
-        """
-        Method for clean exit
-        """
-        self.cap1.release()
-        self.cap2.release()
+    @abstractmethod
+    def __enter__(self):
+        pass
 
-    def read_video(self):
-        ret1, self.rgb_frame = self.cap1.read()
-        ret2, self.depth_frame = self.cap2.read()
+    @abstractmethod
+    def __exit__(self):
+        pass
 
-        self.ret = ret1 and ret2
-
-    def get_point_cloud(self):
+    def __get_point_cloud(self):
         """
 
         :param rgb:
@@ -60,8 +49,8 @@ class PointCloudHandler:
 
         return pcd
 
-    def prepare_point_cloud(self):
-        pcd = self.get_point_cloud()
+    def __prepare_point_cloud(self):
+        pcd = self.__get_point_cloud()
 
         flip_transform = [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
         pcd.transform(flip_transform)
@@ -70,34 +59,34 @@ class PointCloudHandler:
 
         return pcd
 
-    def change_viewport(self, v):
+    def set_viewport_callback(self, v):
         control = v.get_view_control()
-        # control.set_lookat([1, 1, 0])
         control.set_zoom(0.5)
         control.translate(-50, 0, 0)
-        v.register_animation_callback(self.update_view)
 
-    def update_view(self, v):
+        #v.register_animation_callback(self.update_view) TODO execute at the start
+
+    def update_view_callback(self, v):
         if self.pause:
             time.sleep(0.1)
-            v.register_animation_callback(self.update_view)
+            v.register_animation_callback(self.update_view_callback)
         else:
-            self.read_video()
+            self.__read_data()
             if self.ret:
-                pcd = self.prepare_point_cloud()
+                pcd = self.__prepare_point_cloud()
 
                 self.pcd.points = pcd.points
                 self.pcd.colors = pcd.colors
                 v.update_geometry(self.pcd)
-                v.register_animation_callback(self.update_view)
-                self.frame_num += 1
+                v.register_animation_callback(self.update_view_callback)
+                # self.frame_num += 1 TODO only in video reader
 
             else:
                 v.register_animation_callback(self.stop_animation)
 
     def stop_animation(self, v):
         v.destroy_window()
-        self.__close()
+
 
     def key_action_callback(self, vis, action, mods):
         if action == 1:  # key down
@@ -113,8 +102,6 @@ class PointCloudHandler:
 
         :return:
         """
-        self.__open()
-
         # create visualization window
         vis = o3d.visualization.VisualizerWithKeyCallback()
         vis.create_window(width=800, height=800)
@@ -122,17 +109,20 @@ class PointCloudHandler:
         # create geometry
         geometry = o3d.geometry.PointCloud()
         vis.add_geometry(geometry)
+
         # key_action_callback will be triggered when there's a keyboard press, release or repeat event
         vis.register_key_action_callback(32, self.key_action_callback)  # space
 
-        self.read_video()
+        self.__read_data()
 
         if self.ret:
-            self.pcd = self.prepare_point_cloud()
+            self.pcd = self.__prepare_point_cloud()
 
-            vis.register_animation_callback(self.change_viewport)
+            vis.register_animation_callback(self.set_viewport_callback)
+            vis.register_animation_callback(self.update_view_callback)
 
             vis.add_geometry(self.pcd)
 
             vis.run()
+
 
