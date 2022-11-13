@@ -13,6 +13,7 @@ from wrappers.distance_wrapper import DistanceWrapper
 from wrappers.point_cloud_wrapper import PointCloudWrapper
 from wrappers.depth_wrapper import DeothWrapper
 from wrappers.writer_wrapper import WriterWrapper
+from point_cloud_live import PointCloudLive
 
 
 class SystemHandler(DetectionWrapper, DistanceWrapper, DeothWrapper, PointCloudWrapper, WriterWrapper):
@@ -80,6 +81,10 @@ class SystemHandler(DetectionWrapper, DistanceWrapper, DeothWrapper, PointCloudW
         fit_status = self._process_regression(inv_rel_depth,  boxes, distances)
 
         reader.annonate_image(reader.get_frame("raw"), boxes, classes, distances, ids, str("fit_status"))
+
+        pch = PointCloudLive([800, 800, 800.0, 800.0, 400.0, 400.0])
+        pch.set_imgs(img, reader.get_frame("alpha_record"))
+        pch.show()
 
 
         cv2.imshow('', reader.get_frame("annotated"))
