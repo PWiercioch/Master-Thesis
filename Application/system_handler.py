@@ -207,7 +207,7 @@ class SystemHandler:
                     reader.annonate_image(valid_frame, boxes, classes, distances, ids, comment)
 
                     ### Writing video
-                    if self.config["record_alpha_blended"]:
+                    if self.config["record_annotated"]:
                         if self.config["record_annotated"]:
                             out.write(video.get_frame("annotated"))
                         else:
