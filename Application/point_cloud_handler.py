@@ -43,7 +43,7 @@ class PointCloudHandler:
         :param depth:
         :return:
         """
-        depth = self.depth_frame[::, ::, 0] * 0.09476 + 5.5
+        depth = self.depth_frame[::, ::, 0] * 0.033 + 3.9
         # This is in meters, technically should be converted to mm but it seems to wrok the same
 
         # convert bgr to rgb

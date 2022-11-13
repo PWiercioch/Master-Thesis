@@ -1,4 +1,5 @@
 from .extractors.mean_extractor import MeanExtractor
+from .extractors.center_extractor import CenterExtractor
 from .regressors.linear_regressor import LinearRegressor
 import numpy as np
 
@@ -14,7 +15,7 @@ class DistanceRegressor:
         self.regression_model = self.__get_regressor(regressor_type)(**kwargs)
 
     def __get_extractor(self, extractor_type):
-        extractors = {'mean': MeanExtractor}
+        extractors = {'mean': MeanExtractor, "center": CenterExtractor}
         try:
             return extractors[extractor_type]
         except KeyError:
