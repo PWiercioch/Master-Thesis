@@ -59,16 +59,32 @@ class SystemHandler(DetectionWrapper, DistanceWrapper, DeothWrapper, PointCloudW
 
         self.config = {
             "record_annotated": True,
-            "record_alpha_blended": True
+            "record_alpha_blended": True,
+            "display_image": True,
+            "return_depth": False
         }  # maybe provide a parameter or getter/setter
 
         self.od_threshold = 0.6  # maybe provide a parameter or getter/setter
+
+    def weighted_focal(self, focal_h, focal_v, scores, distances):
+        focal_h = focal_h[distances != None]
+        focal_v = focal_v[distances != None]
+        scores = scores[distances != None]
+
+        h_sum = []
+        v_sum = []
+        for h, v, s in zip(focal_h, focal_v, scores):
+            h_sum.append(h*s)
+            v_sum.append(v*s)
+
+        return sum(h_sum)/scores.sum(), sum(v_sum)/scores.sum()
 
     def process_img(self, path: str, disp_res):
         img = cv2.imread(path, 1)
         img = cv2.resize(img, (self.od_resolution, self.od_resolution))
 
         reader = VideoReader(path, self.od_resolution, disp_res)
+        reader.set_frame(img, "raw")
 
         ids, boxes, classes, scores = self._process_detections(img)
 
@@ -82,14 +98,42 @@ class SystemHandler(DetectionWrapper, DistanceWrapper, DeothWrapper, PointCloudW
 
         reader.annonate_image(reader.get_frame("raw"), boxes, classes, distances, ids, str("fit_status"))
 
-        pch = PointCloudLive([800, 800, 800.0, 800.0, 400.0, 400.0])
-        pch.set_imgs(img, reader.get_frame("alpha_record"))
-        pch.show()
+        if self.config['display_image']:
+            cv2.imshow('', reader.get_frame("annotated"))
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
+        if self.use_midas and self.use_disnet and fit_status:
+            if self.distance_regressor.regression_model.get_coeffs()[1][0] < 0:
+                intercept_state = False
+            else:
+                intercept_state = True
+            
+            focal_h, focal_v = self.weighted_focal(focal_h, focal_v, scores, distances)
 
-        cv2.imshow('', reader.get_frame("annotated"))
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+            # print(classes)
+            # print(scores)
+            # print(focal_h, focal_v)
+
+            focal_h = np.median(focal_h)
+            focal_v = np.median(focal_v)
+
+            # print(focal_h, focal_v)
+
+            dimension = reader.get_frame("alpha_record").shape[0]
+            center = dimension / 2
+            # print(mean_focal, self.distance_regressor.regression_model.get_coeffs())
+            pch = PointCloudLive([dimension, dimension, focal_h, focal_v, center, center], *self.distance_regressor.regression_model.get_coeffs())
+            pch.set_imgs(img, reader.get_frame("alpha_record"))
+            pch.show()
+
+            if self.config["return_depth"]:
+                return pch.pcd, reader.get_frame("alpha_record"), intercept_state
+        
+        if self.use_midas and self.use_disnet:
+            return None, None, None
+
+        return boxes, classes, distances
 
     def process_video(self, path: str, out_path: str, disp_res: int) -> None:
         """

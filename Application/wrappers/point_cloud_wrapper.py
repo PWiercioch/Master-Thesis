@@ -1,3 +1,5 @@
+import numpy as np
+
 class PointCloudWrapper:
     def calculate_focals(self, boxes, classes, distances):
         vertical = []
@@ -13,14 +15,14 @@ class PointCloudWrapper:
                 calc_width = abs(box[3] - box[1])
 
                 vertical.append((calc_height * distance) / (
-                            real_height / 100) * 0.265)  # convert distance units to meters and then pixels to mm
+                            real_height / 100))  # convert distance units to meters and then pixels to mm
                 horizontal.append((calc_width * distance) / (
-                            real_width / 100) * 0.265)  # convert distance units to meters and then pixels to mm
+                            real_width / 100))  # convert distance units to meters and then pixels to mm
             else:
                 vertical.append(None)
                 horizontal.append(None)
 
-        return vertical, horizontal
+        return np.array(vertical), np.array(horizontal)
 
     def _process_regression(self, inv_rel_depth, boxes, distances):
         if self.use_midas and self.use_disnet:

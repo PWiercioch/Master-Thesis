@@ -7,9 +7,11 @@ import pandas as pd
 
 
 class PointCloudBase(ABC):
-    def __init__(self, params):
+    def __init__(self, params, coe, intercept):
         self.pause = False
         self.ret = False
+        self.coe = coe[0][0]
+        self.intercept = intercept[0]
 
         self.pinhole_camera_intrinsic = o3d.camera.PinholeCameraIntrinsic(*params)
 
@@ -32,7 +34,7 @@ class PointCloudBase(ABC):
         :param depth:
         :return:
         """
-        depth = self.depth_frame[::, ::, 0] * 0.033 + 3.9
+        depth = self.depth_frame[::, ::, 0] * self.coe + self.intercept
         # This is in meters, technically should be converted to mm but it seems to wrok the same
 
         # convert bgr to rgb
@@ -43,7 +45,7 @@ class PointCloudBase(ABC):
         o3d_rgb = o3d.geometry.Image(rgb)
         o3d_a = o3d.geometry.Image(depth.astype(np.float32))
 
-        rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(o3d_rgb, o3d_a, convert_rgb_to_intensity=False)
+        rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(o3d_rgb, o3d_a, convert_rgb_to_intensity=False, depth_scale=1.0, depth_trunc=1000.0)
 
         pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, self.pinhole_camera_intrinsic)
 
@@ -55,7 +57,7 @@ class PointCloudBase(ABC):
         flip_transform = [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
         pcd.transform(flip_transform)
 
-        pcd = pcd.uniform_down_sample(every_k_points=22)
+        # pcd = pcd.uniform_down_sample(every_k_points=2)
 
         return pcd
 
@@ -118,11 +120,11 @@ class PointCloudBase(ABC):
         if self.ret:
             self.pcd = self.__prepare_point_cloud()
 
-            vis.register_animation_callback(self.set_viewport_callback)
-            vis.register_animation_callback(self.update_view_callback)
+            # vis.register_animation_callback(self.set_viewport_callback)
+            # vis.register_animation_callback(self.update_view_callback)
 
-            vis.add_geometry(self.pcd)
+            # vis.add_geometry(self.pcd)
 
-            vis.run()
+            # vis.run()
 
 
