@@ -20,9 +20,7 @@ class DisNet:
         self.model = distance_model
         self.class_sizes = {1: {"name": "person", "size": [175, 55, 30]},
                             2: {"name": "car", "size": [150, 180, 400]},
-                            3: {"name": "big_car", "size": [350, 200, 1000]},
-                            4: {"name": "bike", "size": [110, 50, 180]},
-                            7: {"name": "animal", "size": [45, 25, 55]}}
+                            4: {"name": "bike", "size": [110, 50, 180]}}
         self.zoom_in_factor = 1
 
     def __invert_dimensions(self, width: float, height: float, diagonal: float) -> tuple[float, float, float]:

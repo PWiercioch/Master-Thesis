@@ -42,8 +42,8 @@ class VideoReader:
 
         self.class_names = {
             1: "person",
-            2: "big_car",
-            3: "car",
+            3: "big_car",
+            2: "car",
             4: "bike",
             5: "train",
             6: "traffic_light",
