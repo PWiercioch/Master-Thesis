@@ -14,7 +14,7 @@ from wrappers.point_cloud_wrapper import PointCloudWrapper
 from wrappers.depth_wrapper import DeothWrapper
 from wrappers.writer_wrapper import WriterWrapper
 from point_cloud_live import PointCloudLive
-
+import threading
 
 class SystemHandler(DetectionWrapper, DistanceWrapper, DeothWrapper, PointCloudWrapper, WriterWrapper):
     """
@@ -45,6 +45,7 @@ class SystemHandler(DetectionWrapper, DistanceWrapper, DeothWrapper, PointCloudW
             od_threshold : object detection probability threshold
 
     """
+
     def __init__(self, model_loader: ModelLoader, max_cosine_distance: float = 0.5, max_age: int = 5) -> None:
         self.detector = ObjectDetector(model_loader.detection_model)
         self.od_resolution = model_loader.od_resolution
@@ -69,15 +70,18 @@ class SystemHandler(DetectionWrapper, DistanceWrapper, DeothWrapper, PointCloudW
     def weighted_focal(self, focal_h, focal_v, scores, distances):
         focal_h = focal_h[distances != None]
         focal_v = focal_v[distances != None]
+        return np.mean(focal_h), np.mean(focal_v)
+        focal_h = focal_h[distances != None]
+        focal_v = focal_v[distances != None]
         scores = scores[distances != None]
 
         h_sum = []
         v_sum = []
         for h, v, s in zip(focal_h, focal_v, scores):
-            h_sum.append(h*s)
-            v_sum.append(v*s)
+            h_sum.append(h * s)
+            v_sum.append(v * s)
 
-        return sum(h_sum)/scores.sum(), sum(v_sum)/scores.sum()
+        return sum(h_sum) / scores.sum(), sum(v_sum) / scores.sum()
 
     def process_img(self, path: str, disp_res):
         img = cv2.imread(path, 1)
@@ -94,7 +98,7 @@ class SystemHandler(DetectionWrapper, DistanceWrapper, DeothWrapper, PointCloudW
 
         focal_v, focal_h = self.calculate_focals(boxes, classes, distances)
 
-        fit_status = self._process_regression(inv_rel_depth,  boxes, distances)
+        fit_status = self._process_regression(inv_rel_depth, boxes, distances)
 
         reader.annonate_image(reader.get_frame("raw"), boxes, classes, distances, ids, str("fit_status"))
 
@@ -108,7 +112,7 @@ class SystemHandler(DetectionWrapper, DistanceWrapper, DeothWrapper, PointCloudW
                 intercept_state = False
             else:
                 intercept_state = True
-            
+
             focal_h, focal_v = self.weighted_focal(focal_h, focal_v, scores, distances)
 
             # print(classes)
@@ -123,30 +127,25 @@ class SystemHandler(DetectionWrapper, DistanceWrapper, DeothWrapper, PointCloudW
             dimension = reader.get_frame("alpha_record").shape[0]
             center = dimension / 2
             # print(mean_focal, self.distance_regressor.regression_model.get_coeffs())
-            pch = PointCloudLive([dimension, dimension, focal_h, focal_v, center, center], *self.distance_regressor.regression_model.get_coeffs())
+            pch = PointCloudLive([dimension, dimension, focal_h, focal_v, center, center],
+                                 *self.distance_regressor.regression_model.get_coeffs())
             pch.set_imgs(img, reader.get_frame("alpha_record"))
             pch.show()
 
             if self.config["return_depth"]:
                 return pch.pcd, reader.get_frame("alpha_record"), intercept_state
-        
+
         if self.use_midas and self.use_disnet:
             return None, None, None
 
         return boxes, classes, distances
 
-    def process_video(self, path: str, out_path: str, disp_res: int) -> None:
-        """
-        Main loop for processing input video: detects objects, annotates frames and displays them
+    def point_cloud_thread(self):
+        self.pch = PointCloudLive()
+        self.pch.show()
 
-            :param path: path to video file
-            :param out_path: path for output video file
-            :param disp_res: resolution for displayed video, assumed to be square
-        """
-        reader = VideoReader(path, self.od_resolution, disp_res)
-        writer = VideoRecorder(out_path, disp_res)
-
-        with reader as video, writer as out:
+    def main_thread(self, reader):
+        with reader as video:
             if not video:  # break if error while opening file
                 return None
 
@@ -166,12 +165,48 @@ class SystemHandler(DetectionWrapper, DistanceWrapper, DeothWrapper, PointCloudW
 
                     focal_v, focal_h = self.calculate_focals(boxes, classes, distances)
 
-                    fit_status = self._process_regression(inv_rel_depth,  boxes, distances)
+                    fit_status = self._process_regression(inv_rel_depth, boxes, distances)
 
                     reader.annonate_image(video.get_frame("raw"), boxes, classes, distances, ids, "")
 
-                    self._write(out, video, fit_status, boxes, classes, scores, distances, focal_v, focal_h, "")
+                    if fit_status:
+                        focal_h, focal_v = self.weighted_focal(focal_h, focal_v, scores, distances)
+
+                        focal_h = np.median(focal_h)
+                        focal_v = np.median(focal_v)
+
+                        dimension = reader.get_frame("alpha_record").shape[0]
+                        center = dimension / 2
+                        self.pch.set_camera_calib([dimension, dimension, focal_h, focal_v, center, center],
+                                             *self.distance_regressor.regression_model.get_coeffs())
+                        self.pch.set_imgs(frame, reader.get_frame("alpha_record"))
+                        # self.pch.update_view_callback()
+                        cv2.imshow('', reader.get_frame("annotated"))
+
+                    key_pressed = cv2.waitKey(1)
+
+                    if key_pressed:
+                        cv2.waitKey(0)
 
                     if reader.show_frame():  # break on user interrupt
                         break
+
+    def process_video(self, path: str, out_path: str, disp_res: int) -> None:
+        """
+        Main loop for processing input video: detects objects, annotates frames and displays them
+
+            :param path: path to video file
+            :param out_path: path for output video file
+            :param disp_res: resolution for displayed video, assumed to be square
+        """
+        reader = VideoReader(path, self.od_resolution, disp_res)
+        print("starting thread")
+        pch_t = threading.Thread(target=self.point_cloud_thread)
+        pch_t.start()
+        print("thread started")
+        main_t = threading.Thread(target=self.main_thread, args=[reader])
+        main_t.start()
+
+        main_t.join()
+
 

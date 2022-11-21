@@ -19,7 +19,7 @@ class PointCloudLive(PointCloudBase):
         self.rgb_input = rgb
         self.depth_input = depth
 
-    def _PointCloudBase__read_data(self):
+    def _read_data(self):
         self.rgb_frame = self.rgb_input
         self.depth_frame = self.depth_input
 

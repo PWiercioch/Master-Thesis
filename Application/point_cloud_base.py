@@ -7,16 +7,13 @@ import pandas as pd
 
 
 class PointCloudBase(ABC):
-    def __init__(self, params, coe, intercept):
+    def __init__(self):
         self.pause = False
         self.ret = False
-        self.coe = coe[0][0]
-        self.intercept = intercept[0]
 
-        self.pinhole_camera_intrinsic = o3d.camera.PinholeCameraIntrinsic(*params)
 
     @abstractmethod
-    def __read_data(self):
+    def _read_data(self):
         pass
 
     @abstractmethod
@@ -27,7 +24,13 @@ class PointCloudBase(ABC):
     def __exit__(self):
         pass
 
-    def __get_point_cloud(self):
+    def set_camera_calib(self, params, coe, intercept):
+        self.coe = coe[0][0]
+        self.intercept = intercept[0]
+
+        self.pinhole_camera_intrinsic = o3d.camera.PinholeCameraIntrinsic(*params)
+
+    def _get_point_cloud(self):
         """
 
         :param rgb:
@@ -51,8 +54,8 @@ class PointCloudBase(ABC):
 
         return pcd
 
-    def __prepare_point_cloud(self):
-        pcd = self.__get_point_cloud()
+    def _prepare_point_cloud(self):
+        pcd = self._get_point_cloud()
 
         flip_transform = [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
         pcd.transform(flip_transform)
@@ -73,9 +76,9 @@ class PointCloudBase(ABC):
             time.sleep(0.1)
             v.register_animation_callback(self.update_view_callback)
         else:
-            self.__read_data()
+            self._read_data()
             if self.ret:
-                pcd = self.__prepare_point_cloud()
+                pcd = self._prepare_point_cloud()
 
                 self.pcd.points = pcd.points
                 self.pcd.colors = pcd.colors
@@ -83,8 +86,8 @@ class PointCloudBase(ABC):
                 v.register_animation_callback(self.update_view_callback)
                 # self.frame_num += 1 TODO only in video reader
 
-            else:
-                v.register_animation_callback(self.stop_animation)
+            # else:
+            #     v.register_animation_callback(self.stop_animation)
 
     def stop_animation(self, v):
         v.destroy_window()
@@ -115,16 +118,18 @@ class PointCloudBase(ABC):
         # key_action_callback will be triggered when there's a keyboard press, release or repeat event
         vis.register_key_action_callback(32, self.key_action_callback)  # space
 
-        self.__read_data()
+        # self.__read_data()
+
+        self.pcd = geometry
 
         if self.ret:
-            self.pcd = self.__prepare_point_cloud()
+            # self.pcd = self.__prepare_point_cloud()
 
-            # vis.register_animation_callback(self.set_viewport_callback)
-            # vis.register_animation_callback(self.update_view_callback)
+            vis.register_animation_callback(self.set_viewport_callback)
+            vis.register_animation_callback(self.update_view_callback)
 
             # vis.add_geometry(self.pcd)
 
-            # vis.run()
+            vis.run()
 
 
